@@ -17,13 +17,16 @@ limitations under the License.
 
 ************************************************************************************/
 
-//#include "stb_image.h"
+#include "Cube.h"
+#include "shader.h"
 
 #include <iostream>
 #include <memory>
 #include <exception>
 #include <algorithm>
 #include <Windows.h>
+
+//#include <limits>
 
 #define _CRT_SECURE_NO_WARNINGS //
 #define __STDC_FORMAT_MACROS 1
@@ -43,6 +46,7 @@ limitations under the License.
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
+
 
 // Import the most commonly used types into the default namespace
 using glm::ivec3;
@@ -584,7 +588,11 @@ protected:
 		ovr_GetTextureSwapChainBufferGL(_session, _eyeTexture, curIndex, &curTexId);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo);
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, curTexId, 0);
+		
+		glClearColor(0.2f, 0.3f, 0.8f, 1.0f); // change background color to light blue
+		
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		ovr::for_each_eye([&](ovrEyeType eye) {
 			const auto& vp = _sceneLayer.Viewport[eye];
 			glViewport(vp.Pos.x, vp.Pos.y, vp.Size.w, vp.Size.h);
@@ -708,122 +716,39 @@ void main(void) {
 // a class for encapsulating building and rendering an RGB cube
 struct ColorCubeScene {
 
-	// Program
-	oglplus::shapes::ShapeWrapper cube;
-	oglplus::Program prog;
-	oglplus::VertexArray vao;
-	GLuint instanceCount;
-	oglplus::Buffer instances;
+	//// Program
+	//oglplus::shapes::ShapeWrapper cube;
+	//oglplus::Program prog;
+	//oglplus::VertexArray vao;
+	//GLuint instanceCount;
+	//oglplus::Buffer instances;
 
 	// VBOs for the cube's vertices and normals
 
 	//const unsigned int GRID_SIZE{ 5 };
-	const unsigned int GRID_SIZE{ 2 };
-
-	// Note that GL_QUADS is deprecated in modern OpenGL (and removed from OSX systems).
-    // This is why we need to draw each face as 2 triangles instead of 1 quadrilateral
-    const GLuint indices[6][6] = {
-        // Front face
-        {0, 1, 2, 2, 3, 0},
-//        {2, 1, 0, 0, 3, 2},
-        // Top face
-        {1, 5, 6, 6, 2, 1},
-//        {6, 5, 1, 1, 2, 6},
-        // Back face
-        {7, 6, 5, 5, 4, 7},
-//        {5, 6, 7, 7, 4, 5},
-        // Bottom face
-        {4, 0, 3, 3, 7, 4},
-//        {3, 0, 4, 4, 7, 3},
-        // Left face
-        {4, 5, 1, 1, 0, 4},
-//        {1, 5, 4, 4, 0, 1},
-        // Right face
-        {3, 2, 6, 6, 7, 3}
-//        {6, 2, 3, 3, 7, 6}
-	};
+	//const unsigned int GRID_SIZE{ 2 };
 
 public:
-	ColorCubeScene() : cube({ "Position", "Normal" }, oglplus::shapes::Cube()) {
-		using namespace oglplus;
-		try {
-			// attach the shaders to the program
-			prog.AttachShader(
-				FragmentShader()
-				.Source(GLSLSource(String(FRAGMENT_SHADER)))
-				.Compile()
-			);
-			prog.AttachShader(
-				VertexShader()
-				.Source(GLSLSource(String(VERTEX_SHADER)))
-				.Compile()
-			);
-			prog.Link();
-		}
-		catch (ProgramBuildError & err) {
-			FAIL((const char*)err.what());
-		}
+	Cube * cube_1;
+	GLuint cube_shader;
 
-		// link and use it
-		prog.Use();
+	const char * CUBE_VERT_PATH = "shader_cube.vert";
+	const char * CUBE_FRAG_PATH = "shader_cube.frag";
 
-		vao = cube.VAOForProgram(prog);
-		vao.Bind();
-		// Create a cube of cubes
-		{
-			std::vector<mat4> instance_positions;
-			/*for (unsigned int z = 0; z < GRID_SIZE; ++z) {
-				for (unsigned int y = 0; y < GRID_SIZE; ++y) {
-					for (unsigned int x = 0; x < GRID_SIZE; ++x) {
-						int xpos = (x - (GRID_SIZE / 2)) * 2;
-						int ypos = (y - (GRID_SIZE / 2)) * 2;
-						int zpos = (z - (GRID_SIZE / 2)) * 2;
-						vec3 relativePosition = vec3(xpos, ypos, zpos);
-						if (relativePosition == vec3(0)) {
-							continue;
-						}
-						instance_positions.push_back(glm::translate(glm::mat4(1.0f), relativePosition));
-					}
-				}
-			}*/
-
-			// Modified code above to only render 2 cubes
-			// one behind another along the user's line of sight
-			int xpos = (1 - (GRID_SIZE / 2)) * 2;
-			int ypos = (1 - (GRID_SIZE / 2)) * 2;
-			int zpos_1 = (0 - (GRID_SIZE / 2)) * 2;
-			int zpos_2 = (-1 - (GRID_SIZE / 2)) * 2;
-			vec3 relativePos_1 = vec3(xpos, ypos, zpos_1); // cube 1
-			vec3 relativePos_2 = vec3(xpos, ypos, zpos_2); // cube 2
-
-			/*cout << "relativePos1: " << xpos << ", " << ypos << ", " << zpos_1 << endl;
-			cout << "relativePos2: " << xpos << ", " << ypos << ", " << zpos_2 << endl;*/
-			
-			instance_positions.push_back(glm::translate(glm::mat4(1.0f), relativePos_1));
-			instance_positions.push_back(glm::translate(glm::mat4(1.0f), relativePos_2));
-
-
-			Context::Bound(Buffer::Target::Array, instances).Data(instance_positions);
-			instanceCount = (GLuint)instance_positions.size();
-			int stride = sizeof(mat4);
-			for (int i = 0; i < 4; ++i) {
-				VertexArrayAttrib instance_attr(prog, Attribute::InstanceTransform + i);
-				size_t offset = sizeof(vec4) * i;
-				instance_attr.Pointer(4, DataType::Float, false, stride, (void*)offset);
-				instance_attr.Divisor(1);
-				instance_attr.Enable();
-			}
-		}
+	ColorCubeScene() {
+		cube_1 = new Cube(100); // first cube of size 1
+		cube_shader = LoadShaders(CUBE_VERT_PATH, CUBE_FRAG_PATH);
 	}
 
-	void render(const mat4 & projection, const mat4 & modelview) {
-		using namespace oglplus;
-		prog.Use();
-		Uniform<mat4>(prog, "ProjectionMatrix").Set(projection);
-		Uniform<mat4>(prog, "CameraMatrix").Set(modelview);  // cse190: this is default for normal rendering with head tracking
-//		Uniform<mat4>(prog, "CameraMatrix").Set(identity);   // cse190: changing modelview to identity freezes scene and head motion
-		vao.Bind();
-		cube.Draw(instanceCount);
+	~ColorCubeScene(){
+		delete(cube_1);
+		glDeleteProgram(cube_shader);
+		// delete char * ?
+	}
+
+	void render(const mat4 & projection, const mat4 & modelview) { // why not even the background color would show?
+		glUseProgram(cube_shader);
+		cube_1->draw(cube_shader, projection, modelview);
 	}
 };
 
@@ -839,7 +764,9 @@ public:
 protected:
 	void initGl() override {
 		RiftApp::initGl();
-		glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
+		//glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
+		glClearColor(0.2f, 0.3f, 0.8f, 1.0f); // change background color to light blue
+
 		glEnable(GL_DEPTH_TEST);
 		ovr_RecenterTrackingOrigin(_session);
 		cubeScene = std::shared_ptr<ColorCubeScene>(new ColorCubeScene());
