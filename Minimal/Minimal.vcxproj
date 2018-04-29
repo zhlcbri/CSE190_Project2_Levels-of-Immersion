@@ -130,7 +130,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="cube_pattern.ppm" />
     <None Include="packages.config" />
     <None Include="shader_cube.frag" />
     <None Include="shader_cube.vert" />

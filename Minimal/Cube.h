@@ -42,35 +42,39 @@
 
 using namespace std;
 
+unsigned int skyboxTexture;
 unsigned int cubemapTexture;
 
 class Cube {
 private:
 	int size = 1;
+	vector<string> myFaces;
 
 public:
+	bool isSkybox = false;
+
 	glm::mat4 toWorld;
 
 	GLuint VBO, VAO, EBO;
 	GLuint uProjection, uModelview;
 
-	Cube(int mySize)
+	Cube(int mySize, vector<string> faces, bool check)
 	{
 		size = mySize;
+		isSkybox = check;
 
 		//toWorld = glm::scale(glm::mat4(1.0f), glm::vec3((float)size));
 		toWorld = glm::mat4(1.0f);
 
-		faces = {
-			"cube_pattern.ppm",
-			"cube_pattern.ppm",
-			"cube_pattern.ppm",
-			"cube_pattern.ppm",
-			"cube_pattern.ppm",
-			"cube_pattern.ppm"
-		};
+		//cubemapTexture = loadCubemap(faces);
+		myFaces = faces;
 
-		cubemapTexture = loadCubemap(faces);
+		if (check) {
+			skyboxTexture = loadCubemap(faces);
+		}
+		else {
+			cubemapTexture = loadCubemap(faces);
+		}
 
 		// Create array object and buffers. Remember to delete your buffers when the object is destroyed!
 		glGenVertexArrays(1, &VAO);
@@ -127,7 +131,6 @@ public:
 		for (unsigned int i = 0; i < faces.size(); i++)
 		{
 			unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
-			//        unsigned char *data = loadPPM(faces[i].c_str(), width, height);
 			if (data)
 			{
 				glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
@@ -153,15 +156,12 @@ public:
 
 	void draw(GLuint shaderProgram, const glm::mat4 & projection, const glm::mat4 & modelview)
 	{
-		//glEnable(GL_CULL_FACE);
-		/*glCullFace(GL_FRONT);*/
-		//glCullFace(GL_BACK);
-		//    glDepthMask(GL_FALSE);
+		// If drawing skybox cull front face
+		// otherwise cull back face
 
-		glDepthMask(GL_TRUE);
-
-		//scale(shaderProgram, 0.14f);
-
+		glEnable(GL_CULL_FACE);
+		GLuint uMode = glGetUniformLocation(shaderProgram, "tex_mode");
+		
 		// We need to calculate this because modern OpenGL does not keep track of any matrix other than the viewport (D)
 		// Consequently, we need to forward the projection, view, and model matrices to the shader programs
 		// Get the location of the uniform variables "projection" and "modelview"
@@ -175,8 +175,34 @@ public:
 
 		// skybox cube
 		glBindVertexArray(VAO);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+
+		if (isSkybox) {
+			glCullFace(GL_FRONT);
+			glUniform1i(uMode, 0); // texture mode 0
+
+			//skyboxTexture = loadCubemap(myFaces);
+			
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+			glUniform1i(glGetUniformLocation(shaderProgram, "skyboxTex"), 0);
+
+			/*		glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, rockTexture);
+			glUniform1i(glGetUniformLocation(shaderProgram, "texture_0"), 0);*/
+
+		}
+		else {
+			glCullFace(GL_BACK);
+			glUniform1i(uMode, 1); // texture mode 1
+
+			//cubemapTexture = loadCubemap(myFaces);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+			glUniform1i(glGetUniformLocation(shaderProgram, "cubeTex"), 1);
+		}
+
+		/*glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);*/
 
 		// Enable depth test
 		glEnable(GL_DEPTH_TEST);
@@ -198,8 +224,6 @@ public:
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &temp[0][0]);
 	}
 
-
-	vector<string> faces;
 
 	// Define the coordinates and indices needed to draw the cube. Note that it is not necessary
 	// to use a 2-dimensional array, since the layout in memory is the same as a 1-dimensional array.

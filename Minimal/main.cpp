@@ -593,12 +593,13 @@ protected:
 		
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		/////// LOOK OVER HERE
 		ovr::for_each_eye([&](ovrEyeType eye) {
 			const auto& vp = _sceneLayer.Viewport[eye];
 			glViewport(vp.Pos.x, vp.Pos.y, vp.Size.w, vp.Size.h);
 			_sceneLayer.RenderPose[eye] = eyePoses[eye];
 			renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is for normal stereo rendering
-//			renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
+			//renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
 //			if (eye==ovrEye_Left) renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is how to render to only one eye
 
 		});
@@ -640,91 +641,42 @@ protected:
 // application would perform whatever rendering you want
 //
 
-
-//////////////////////////////////////////////////////////////////////
-//
-// OGLplus is a set of wrapper classes for giving OpenGL a more object
-// oriented interface
-//
-#define OGLPLUS_USE_GLCOREARB_H 0
-#define OGLPLUS_USE_GLEW 1
-#define OGLPLUS_USE_BOOST_CONFIG 0
-#define OGLPLUS_NO_SITE_CONFIG 1
-#define OGLPLUS_LOW_PROFILE 1
-
-#pragma warning( disable : 4068 4244 4267 4065)
-#include <oglplus/config/basic.hpp>
-#include <oglplus/config/gl.hpp>
-#include <oglplus/all.hpp>
-#include <oglplus/interop/glm.hpp>
-#include <oglplus/bound/texture.hpp>
-#include <oglplus/bound/framebuffer.hpp>
-#include <oglplus/bound/renderbuffer.hpp>
-#include <oglplus/bound/buffer.hpp>
-#include <oglplus/shapes/cube.hpp>
-#include <oglplus/shapes/wrapper.hpp>
-#pragma warning( default : 4068 4244 4267 4065)
-
-
-
-namespace Attribute {
-	enum {
-		Position = 0,
-		TexCoord0 = 1,
-		Normal = 2,
-		Color = 3,
-		TexCoord1 = 4,
-		InstanceTransform = 5,
-	};
-}
-
-static const char * VERTEX_SHADER = R"SHADER(
-#version 410 core
-
-uniform mat4 ProjectionMatrix = mat4(1);
-uniform mat4 CameraMatrix = mat4(1);
-
-layout(location = 0) in vec4 Position;
-layout(location = 2) in vec3 Normal;
-layout(location = 5) in mat4 InstanceTransform;
-
-out vec3 vertNormal;
-
-void main(void) {
-   mat4 ViewXfm = CameraMatrix * InstanceTransform;
-   //mat4 ViewXfm = CameraMatrix;
-   vertNormal = Normal;
-   gl_Position = ProjectionMatrix * ViewXfm * Position;
-}
-)SHADER";
-
-static const char * FRAGMENT_SHADER = R"SHADER(
-#version 410 core
-
-in vec3 vertNormal;
-out vec4 fragColor;
-
-void main(void) {
-    vec3 color = vertNormal;
-    if (!all(equal(color, abs(color)))) {
-        color = vec3(1.0) - abs(color);
-    }
-    fragColor = vec4(color, 1.0);
-}
-)SHADER";
-
 // a class for encapsulating building and rendering an RGB cube
 struct ColorCubeScene {
 
 public:
 	Cube * cube_1;
+	Cube * skybox;
+
 	GLuint cube_shader;
+
+	vector<string> cube_faces = {
+		"cube_pattern.ppm",
+		"cube_pattern.ppm",
+		"cube_pattern.ppm",
+		"cube_pattern.ppm",
+		"cube_pattern.ppm",
+		"cube_pattern.ppm"
+	};
+
+	vector<string> skybox_faces = {
+		"skybox_leftEye/nx.ppm",
+		"skybox_leftEye/ny.ppm",
+		"skybox_leftEye/nz.ppm",
+		"skybox_leftEye/px.ppm",
+		"skybox_leftEye/py.ppm",
+		"skybox_leftEye/pz.ppm",
+	};
 
 	const char * CUBE_VERT_PATH = "shader_cube.vert";
 	const char * CUBE_FRAG_PATH = "shader_cube.frag";
 
 	ColorCubeScene() {
-		cube_1 = new Cube(1); // first cube of size 1
+		skybox = new Cube(1, skybox_faces, true);
+		skybox->isSkybox = true; // trigger front face culling
+
+		cube_1 = new Cube(1, cube_faces, false); // first cube of size 1
+
 		cube_shader = LoadShaders(CUBE_VERT_PATH, CUBE_FRAG_PATH);
 	}
 
@@ -738,8 +690,20 @@ public:
 		glUseProgram(cube_shader);
 
 		GLuint uProjection = glGetUniformLocation(cube_shader, "model");
+		//GLuint uMode = glGetUniformLocation(cube_shader, "tex_mode");
 
-		glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
+		// render skybox
+		//glUniform1i(uMode, 1);
+
+		glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f, 100.0f, 100.0f));
+		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &scaleMat[0][0]);
+
+		skybox->draw(cube_shader, projection, modelview);
+
+		// render cubes
+		//glUniform1i(uMode, 2);
+
+		scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
 
 		vec3 pos_1 = vec3(0.0f, 0.0f, -4.0f);
 		vec3 pos_2 = vec3(0.0f, 0.0f, -8.0f);
@@ -747,12 +711,14 @@ public:
 		glm::mat4 posMat = glm::translate(glm::mat4(1.0f), pos_1);
 		glm::mat4 M = scaleMat * posMat;
 
+		// draw closer cube
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
 		cube_1->draw(cube_shader, projection, modelview);
 
 		posMat = glm::translate(glm::mat4(1.0f), pos_2);
 		M = scaleMat * posMat;
 
+		// draw further cube
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
 		cube_1->draw(cube_shader, projection, modelview);
 
