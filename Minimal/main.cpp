@@ -716,18 +716,6 @@ void main(void) {
 // a class for encapsulating building and rendering an RGB cube
 struct ColorCubeScene {
 
-	//// Program
-	//oglplus::shapes::ShapeWrapper cube;
-	//oglplus::Program prog;
-	//oglplus::VertexArray vao;
-	//GLuint instanceCount;
-	//oglplus::Buffer instances;
-
-	// VBOs for the cube's vertices and normals
-
-	//const unsigned int GRID_SIZE{ 5 };
-	//const unsigned int GRID_SIZE{ 2 };
-
 public:
 	Cube * cube_1;
 	GLuint cube_shader;
@@ -736,7 +724,7 @@ public:
 	const char * CUBE_FRAG_PATH = "shader_cube.frag";
 
 	ColorCubeScene() {
-		cube_1 = new Cube(100); // first cube of size 1
+		cube_1 = new Cube(700); // first cube of size 1
 		cube_shader = LoadShaders(CUBE_VERT_PATH, CUBE_FRAG_PATH);
 	}
 
@@ -747,6 +735,7 @@ public:
 	}
 
 	void render(const mat4 & projection, const mat4 & modelview) { // why not even the background color would show?
+		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // right eye is black ?!
 		glUseProgram(cube_shader);
 		cube_1->draw(cube_shader, projection, modelview);
 	}

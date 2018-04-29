@@ -70,6 +70,11 @@ public:
 			"front.ppm"
 		};*/
 		faces = {
+			"cube_pattern.ppm",
+			"cube_pattern.ppm",
+			"cube_pattern.ppm",
+			"cube_pattern.ppm",
+			"cube_pattern.ppm",
 			"cube_pattern.ppm"
 		};
 
@@ -156,11 +161,14 @@ public:
 
 	void draw(GLuint shaderProgram, const glm::mat4 & projection, const glm::mat4 & modelview)
 	{
-
 		//glEnable(GL_CULL_FACE);
 		/*glCullFace(GL_FRONT);*/
 		//glCullFace(GL_BACK);
 		//    glDepthMask(GL_FALSE);
+
+		//glUseProgram(shaderProgram);
+
+		glDepthMask(GL_TRUE);
 
 		// We need to calculate this because modern OpenGL does not keep track of any matrix other than the viewport (D)
 		// Consequently, we need to forward the projection, view, and model matrices to the shader programs
@@ -177,16 +185,35 @@ public:
 		glBindVertexArray(VAO);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-		//    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+		// Enable depth test
+		glEnable(GL_DEPTH_TEST);
+		// Accept fragment if it closer to the camera than the former one
+		glDepthFunc(GL_LESS);
+
+		//glDrawArrays(GL_TRIANGLES, 0, 36); // 12 * 3
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
-		//    glDepthMask(GL_TRUE);
+		/*glDepthMask(GL_TRUE);*/
 
 		glDepthFunc(GL_LESS); // set depth function back to default
 	};
 
 	vector<string> faces;
+
+	//const GLfloat vertices[8][3] = {
+	//	// front
+	//	{-1.0, -1.0, 1.0},
+	//{1.0, -1.0,  1.0} ,
+	//{1.0,  1.0,  1.0},
+	//{-1.0,  1.0,  1.0},
+	//	// back
+	//{-1.0, -1.0, -1.0},
+	//{1.0, -1.0, -1.0},
+	//{1.0,  1.0, -1.0},
+	//{-1.0,  1.0, -1.0},
+	//};
 
 	// Define the coordinates and indices needed to draw the cube. Note that it is not necessary
 	// to use a 2-dimensional array, since the layout in memory is the same as a 1-dimensional array.
@@ -196,12 +223,14 @@ public:
 		{ -(float)size, -(float)size,  (float)size },{ (float)size, -(float)size,  (float)size },{ (float)size,  (float)size,  (float)size },{ -(float)size,  (float)size,  (float)size },
 	{ -(float)size, -(float)size, -(float)size },{ (float)size, -(float)size, -(float)size },{ (float)size,  (float)size, -(float)size },{ -(float)size, (float)size, -(float)size }
 
-		// "Front" vertices
-		//{ -700.0, -700.0,  700.0 },{ 700.0, -700.0,  700.0 },{ 700.0,  700.0,  700.0 },{ -700.0,  700.0,  700.0 },
-		
-		// "Back" vertices
+	//	 //"Front" vertices
+	//	{ -700.0, -700.0,  700.0 },{ 700.0, -700.0,  700.0 },{ 700.0,  700.0,  700.0 },{ -700.0,  700.0,  700.0 },
+	//	
+	//	 //"Back" vertices
 	//{ -700.0, -700.0, -700.0 },{ 700.0, -700.0, -700.0 },{ 700.0,  700.0, -700.0 },{ -700.0,  700.0, -700.0 }
 	};
+
+
 
 	// Note that GL_QUADS is deprecated in modern OpenGL (and removed from OSX systems).
 	// This is why we need to draw each face as 2 triangles instead of 1 quadrilateral
