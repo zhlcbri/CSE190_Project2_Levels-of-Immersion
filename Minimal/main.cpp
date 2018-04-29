@@ -73,6 +73,16 @@ bool cube_size_up; // set to true with LThumbStick to right
 bool cube_size_down; // set to true with LThumbStick to left
 bool cube_size_reset; // set to true with LThumbStick pressed in
 
+bool x1; // show entire scene (cubes and sky box)
+bool x2; // show just the sky box in stereo
+bool x3; // show just the sky box in mono
+
+bool a1; // 3D stereo
+bool a2; // mono (the same image rendered on both eyes)
+bool a3; // left eye only (right eye black)
+bool a4; // right eye only (left eye black)
+bool a5; // inverted stereo (left eye image rendered to right eye and vice versa)
+
 
 bool checkFramebufferStatus(GLenum target = GL_FRAMEBUFFER) {
 	GLuint status = glCheckFramebufferStatus(target);
@@ -739,6 +749,8 @@ public:
 
 	void render(const mat4 & projection, const mat4 & modelview) { 
 
+		// set scaling range
+
 		// change cubeScaleMat according to booleans
 		if (cube_size_up) {
 			cubeScaleMat = scaleCubes(1.01f);
@@ -750,7 +762,7 @@ public:
 		if (cube_size_reset) {
 			resetCubes();
 		}
-
+			
 	/*	glm::mat4 S = glm::scale(glm::mat4(1.0f), glm::vec3(1.05f));
 		cubeScaleMat = cubeScaleMat * S;*/
 		//cubeScaleMat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
