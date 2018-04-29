@@ -179,30 +179,19 @@ public:
 		if (isSkybox) {
 			glCullFace(GL_FRONT);
 			glUniform1i(uMode, 0); // texture mode 0
-
-			//skyboxTexture = loadCubemap(myFaces);
 			
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
 			glUniform1i(glGetUniformLocation(shaderProgram, "skyboxTex"), 0);
-
-			/*		glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, rockTexture);
-			glUniform1i(glGetUniformLocation(shaderProgram, "texture_0"), 0);*/
-
 		}
 		else {
 			glCullFace(GL_BACK);
 			glUniform1i(uMode, 1); // texture mode 1
 
-			//cubemapTexture = loadCubemap(myFaces);
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 			glUniform1i(glGetUniformLocation(shaderProgram, "cubeTex"), 1);
 		}
-
-		/*glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);*/
 
 		// Enable depth test
 		glEnable(GL_DEPTH_TEST);

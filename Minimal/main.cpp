@@ -473,6 +473,11 @@ public:
 		// Make the on screen window 1/4 the resolution of the render target
 		_mirrorSize = _renderTargetSize;
 		_mirrorSize /= 4;
+
+		/////// Custom booleans
+		bool cube_size_up = false; // set to true with LThumbStick to right
+		bool cube_size_down = false; // set to true with LThumbStick to left
+		bool cube_size_reset = false; // set to true with LThumbStick pressed in
 	}
 
 protected:
@@ -536,6 +541,29 @@ protected:
 			FAIL("Could not create mirror texture");
 		}
 		glGenFramebuffers(1, &_mirrorFbo);
+
+	}
+
+	void update() final override
+	{
+		ovrInputState inputState;
+		if (OVR_SUCCESS(ovr_GetInputState(_session, ovrControllerType_Touch, &inputState)))
+		{
+			/*if (inputState.HandTrigger[ovrHand_Right] > 0.5f)   cerr << "right middle trigger pressed" << endl;
+			if (inputState.IndexTrigger[ovrHand_Right] > 0.5f)	cerr << "right index trigger pressed"  << endl;
+			if (inputState.HandTrigger[ovrHand_Left] > 0.5f)    cerr << "left middle trigger pressed"  << endl;
+			if (inputState.IndexTrigger[ovrHand_Left] > 0.5f)	cerr << "left index trigger pressed"   << endl;
+			if (inputState.Buttons>0) cerr << "Button state:" << inputState.Buttons << endl;*/
+			// cse190: no need to print the above messages
+
+			if (inputState.Thumbstick[ovrHand_Left].x < 0) cout << "left thumbstick to the left" << endl;
+			if (inputState.Thumbstick[ovrHand_Left].x > 0) cout << "left thumbstick to the right" << endl;
+
+			if (inputState.Buttons & ovrButton_LThumb) {
+				cout << "left thubstick pressed in" << endl;
+			}
+
+		}
 	}
 
 	void onKey(int key, int scancode, int action, int mods) override {
@@ -616,20 +644,6 @@ protected:
 		glBlitFramebuffer(0, 0, _mirrorSize.x, _mirrorSize.y, 0, _mirrorSize.y, _mirrorSize.x, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	}
-	
-	void update() final override 
-	{
-		ovrInputState inputState;
-		if (OVR_SUCCESS(ovr_GetInputState(_session, ovrControllerType_Touch, &inputState)))
-		{
-			if (inputState.HandTrigger[ovrHand_Right] > 0.5f)   cerr << "right middle trigger pressed" << endl;
-			if (inputState.IndexTrigger[ovrHand_Right] > 0.5f)	cerr << "right index trigger pressed"  << endl;
-			if (inputState.HandTrigger[ovrHand_Left] > 0.5f)    cerr << "left middle trigger pressed"  << endl;
-			if (inputState.IndexTrigger[ovrHand_Left] > 0.5f)	cerr << "left index trigger pressed"   << endl;
-			if (inputState.Buttons>0) cerr << "Botton state:" << inputState.Buttons << endl;
-            // cse190: no need to print the above messages
-		}
-	}
 
 	virtual void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose) = 0;
 };
@@ -661,10 +675,10 @@ public:
 
 	vector<string> skybox_faces = {
 		"skybox_leftEye/nx.ppm",
-		"skybox_leftEye/ny.ppm",
-		"skybox_leftEye/nz.ppm",
 		"skybox_leftEye/px.ppm",
-		"skybox_leftEye/py.ppm",
+		"skybox_leftEye/py_2.ppm", // rotated 
+		"skybox_leftEye/ny_2.ppm", // rotated
+		"skybox_leftEye/nz.ppm",
 		"skybox_leftEye/pz.ppm",
 	};
 
