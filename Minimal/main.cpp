@@ -737,13 +737,26 @@ public:
 	void render(const mat4 & projection, const mat4 & modelview) { // why not even the background color would show?
 		glUseProgram(cube_shader);
 
-		glm::mat4 S = glm::scale(glm::mat4(1.0f), glm::vec3(0.14f, 0.14f, 0.14f));
-		//glm::mat4 S = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f));
+		GLuint uProjection = glGetUniformLocation(cube_shader, "model");
 
-		// Pass in M and draw cursor
-		//cube_shader->setMat4("model", T*S*T_in);
+		glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
 
+		vec3 pos_1 = vec3(0.0f, 0.0f, -4.0f);
+		vec3 pos_2 = vec3(0.0f, 0.0f, -8.0f);
+
+		glm::mat4 posMat = glm::translate(glm::mat4(1.0f), pos_1);
+		glm::mat4 M = scaleMat * posMat;
+
+		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
 		cube_1->draw(cube_shader, projection, modelview);
+
+		posMat = glm::translate(glm::mat4(1.0f), pos_2);
+		M = scaleMat * posMat;
+
+		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
+		cube_1->draw(cube_shader, projection, modelview);
+
+
 	}
 };
 

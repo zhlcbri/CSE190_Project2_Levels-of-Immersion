@@ -160,7 +160,7 @@ public:
 
 		glDepthMask(GL_TRUE);
 
-		scale(shaderProgram, 0.14f);
+		//scale(shaderProgram, 0.14f);
 
 		// We need to calculate this because modern OpenGL does not keep track of any matrix other than the viewport (D)
 		// Consequently, we need to forward the projection, view, and model matrices to the shader programs
@@ -168,11 +168,6 @@ public:
 		uProjection = glGetUniformLocation(shaderProgram, "projection");// light.colorvec3
 																		//    uModelview = glGetUniformLocation(shaderProgram, "modelview");
 		uModelview = glGetUniformLocation(shaderProgram, "view");
-
-		// for scaling
-		//glm::mat4 & temp = glm::scale(glm::mat4(1.0f), glm::vec3(0.14f, 0.14f, 0.14f));
-		//glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &temp[0][0]);
-		// 
 
 		// Now send these values to the shader program
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &projection[0][0]);
@@ -210,9 +205,6 @@ public:
 	// to use a 2-dimensional array, since the layout in memory is the same as a 1-dimensional array.
 	// This just looks nicer since it's easy to tell what coordinates/indices belong where.
 	const GLfloat vertices[8][3] = {
-
-		/*{ -10.0, -10.0,  10.0 },{ 10.0, -10.0,  10.0 },{ 10.0,  10.0,  10.0 },{ -10.0,  10.0,  10.0 },
-		{ -10.0, -10.0, -10.0 },{ 10.0, -10.0, -10.0 },{ 10.0,  10.0, -10.0 },{ -10.0,  10.0, -10.0 }*/
 
 	{ -(GLfloat)size, -(GLfloat)size,  (GLfloat)size },
 	{ (GLfloat)size, -(GLfloat)size,  (GLfloat)size },
