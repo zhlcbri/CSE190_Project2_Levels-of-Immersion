@@ -68,6 +68,12 @@ using namespace std;
 
 #include <GL/glew.h>
 
+/////// Custom variables
+bool cube_size_up; // set to true with LThumbStick to right
+bool cube_size_down; // set to true with LThumbStick to left
+bool cube_size_reset; // set to true with LThumbStick pressed in
+
+
 bool checkFramebufferStatus(GLenum target = GL_FRAMEBUFFER) {
 	GLuint status = glCheckFramebufferStatus(target);
 	switch (status) {
@@ -446,6 +452,10 @@ private:
 	uvec2 _mirrorSize;
 
 public:
+	///////// Custom variables
+	//bool cube_size_up; // set to true with LThumbStick to right
+	//bool cube_size_down; // set to true with LThumbStick to left
+	//bool cube_size_reset; // set to true with LThumbStick pressed in
 
 	RiftApp() {
 		using namespace ovr;
@@ -474,10 +484,6 @@ public:
 		_mirrorSize = _renderTargetSize;
 		_mirrorSize /= 4;
 
-		/////// Custom booleans
-		bool cube_size_up = false; // set to true with LThumbStick to right
-		bool cube_size_down = false; // set to true with LThumbStick to left
-		bool cube_size_reset = false; // set to true with LThumbStick pressed in
 	}
 
 protected:
@@ -546,6 +552,10 @@ protected:
 
 	void update() final override
 	{
+		cube_size_up = false;
+		cube_size_down = false;
+		cube_size_reset = false;
+
 		ovrInputState inputState;
 		if (OVR_SUCCESS(ovr_GetInputState(_session, ovrControllerType_Touch, &inputState)))
 		{
@@ -556,11 +566,20 @@ protected:
 			if (inputState.Buttons>0) cerr << "Button state:" << inputState.Buttons << endl;*/
 			// cse190: no need to print the above messages
 
-			if (inputState.Thumbstick[ovrHand_Left].x < 0) cout << "left thumbstick to the left" << endl;
-			if (inputState.Thumbstick[ovrHand_Left].x > 0) cout << "left thumbstick to the right" << endl;
+			if (inputState.Thumbstick[ovrHand_Left].x < 0) {
+				//cout << "left thumbstick to the left" << endl;
+				cube_size_down = true;
+				//cube_size_up = false;
+			}
+			if (inputState.Thumbstick[ovrHand_Left].x > 0) { 
+				//cout << "left thumbstick to the right" << endl; 
+				cube_size_up = true;
+				//cube_size_down = false;
+			}
 
 			if (inputState.Buttons & ovrButton_LThumb) {
-				cout << "left thubstick pressed in" << endl;
+				//cout << "left thubstick pressed in" << endl;
+				cube_size_reset = true;
 			}
 
 		}
@@ -685,9 +704,10 @@ public:
 	const char * CUBE_VERT_PATH = "shader_cube.vert";
 	const char * CUBE_FRAG_PATH = "shader_cube.frag";
 
+	glm::mat4 cubeScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f)); // only mat used to scale cube
+
 	ColorCubeScene() {
 		skybox = new Cube(1, skybox_faces, true);
-		skybox->isSkybox = true; // trigger front face culling
 
 		cube_1 = new Cube(1, cube_faces, false); // first cube of size 1
 
@@ -695,42 +715,72 @@ public:
 	}
 
 	~ColorCubeScene(){
+		delete(skybox);
 		delete(cube_1);
 		glDeleteProgram(cube_shader);
 		// delete char * ?
 	}
 
-	void render(const mat4 & projection, const mat4 & modelview) { // why not even the background color would show?
+	void resetCubes() {
+		cubeScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
+	} //
+
+	glm::mat4 scaleCubes(float val) {
+		//cubeScaleMat = glm::scale(cubeScaleMat, glm::vec3(val, val, val));
+		glm::mat4 mat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(val));
+		return mat;
+	}
+
+	//void OBJObject::scale(float val) {
+	//	scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(val));
+	//	this->toWorld = this->toWorld * scaleMat;
+	//	sVal *= val;
+	//}
+
+	void render(const mat4 & projection, const mat4 & modelview) { 
+
+		// change cubeScaleMat according to booleans
+		if (cube_size_up) {
+			cubeScaleMat = scaleCubes(1.01f);
+		}
+		/*if (cube_size_down) {
+			cubeScaleMat = scaleCubes(0.09f);
+		}*/
+
+		if (cube_size_reset) {
+			resetCubes();
+		}
+
+	/*	glm::mat4 S = glm::scale(glm::mat4(1.0f), glm::vec3(1.05f));
+		cubeScaleMat = cubeScaleMat * S;*/
+		//cubeScaleMat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+
 		glUseProgram(cube_shader);
 
 		GLuint uProjection = glGetUniformLocation(cube_shader, "model");
-		//GLuint uMode = glGetUniformLocation(cube_shader, "tex_mode");
 
 		// render skybox
-		//glUniform1i(uMode, 1);
-
 		glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f, 100.0f, 100.0f));
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &scaleMat[0][0]);
 
 		skybox->draw(cube_shader, projection, modelview);
 
 		// render cubes
-		//glUniform1i(uMode, 2);
-
-		scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
+		// scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
 
 		vec3 pos_1 = vec3(0.0f, 0.0f, -4.0f);
 		vec3 pos_2 = vec3(0.0f, 0.0f, -8.0f);
 
 		glm::mat4 posMat = glm::translate(glm::mat4(1.0f), pos_1);
-		glm::mat4 M = scaleMat * posMat;
+		glm::mat4 M = cubeScaleMat * posMat;
+		//glm::mat4 M = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)) * posMat; // works to scale up
 
 		// draw closer cube
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
 		cube_1->draw(cube_shader, projection, modelview);
 
 		posMat = glm::translate(glm::mat4(1.0f), pos_2);
-		M = scaleMat * posMat;
+		M = cubeScaleMat * posMat;
 
 		// draw further cube
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
