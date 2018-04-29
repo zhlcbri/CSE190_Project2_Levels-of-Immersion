@@ -58,17 +58,9 @@ public:
 	{
 		size = mySize;
 
+		//toWorld = glm::scale(glm::mat4(1.0f), glm::vec3((float)size));
 		toWorld = glm::mat4(1.0f);
 
-		// TODO change
-		/*faces = {
-			"right.ppm",
-			"left.ppm",
-			"top.ppm",
-			"bottom.ppm",
-			"back.ppm",
-			"front.ppm"
-		};*/
 		faces = {
 			"cube_pattern.ppm",
 			"cube_pattern.ppm",
@@ -124,7 +116,7 @@ public:
 		glDeleteBuffers(1, &EBO);
 	};
 
-	//    unsigned char* loadPPM(const char* filename, int& width, int& height);
+
 	unsigned int loadCubemap(vector<string> faces)
 	{
 		unsigned int textureID;
@@ -166,9 +158,9 @@ public:
 		//glCullFace(GL_BACK);
 		//    glDepthMask(GL_FALSE);
 
-		//glUseProgram(shaderProgram);
-
 		glDepthMask(GL_TRUE);
+
+		scale(shaderProgram, 0.14f);
 
 		// We need to calculate this because modern OpenGL does not keep track of any matrix other than the viewport (D)
 		// Consequently, we need to forward the projection, view, and model matrices to the shader programs
@@ -176,6 +168,11 @@ public:
 		uProjection = glGetUniformLocation(shaderProgram, "projection");// light.colorvec3
 																		//    uModelview = glGetUniformLocation(shaderProgram, "modelview");
 		uModelview = glGetUniformLocation(shaderProgram, "view");
+
+		// for scaling
+		//glm::mat4 & temp = glm::scale(glm::mat4(1.0f), glm::vec3(0.14f, 0.14f, 0.14f));
+		//glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &temp[0][0]);
+		// 
 
 		// Now send these values to the shader program
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &projection[0][0]);
@@ -191,7 +188,7 @@ public:
 		// Accept fragment if it closer to the camera than the former one
 		glDepthFunc(GL_LESS);
 
-		//glDrawArrays(GL_TRIANGLES, 0, 36); // 12 * 3
+		// Draw triangles
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
@@ -200,60 +197,56 @@ public:
 		glDepthFunc(GL_LESS); // set depth function back to default
 	};
 
-	vector<string> faces;
 
-	//const GLfloat vertices[8][3] = {
-	//	// front
-	//	{-1.0, -1.0, 1.0},
-	//{1.0, -1.0,  1.0} ,
-	//{1.0,  1.0,  1.0},
-	//{-1.0,  1.0,  1.0},
-	//	// back
-	//{-1.0, -1.0, -1.0},
-	//{1.0, -1.0, -1.0},
-	//{1.0,  1.0, -1.0},
-	//{-1.0,  1.0, -1.0},
-	//};
+	void scale(GLuint shaderProgram, float val) {	
+		glm::mat4 & temp = glm::scale(glm::mat4(1.0f), glm::vec3(val, val, val));
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &temp[0][0]);
+	}
+
+
+	vector<string> faces;
 
 	// Define the coordinates and indices needed to draw the cube. Note that it is not necessary
 	// to use a 2-dimensional array, since the layout in memory is the same as a 1-dimensional array.
 	// This just looks nicer since it's easy to tell what coordinates/indices belong where.
 	const GLfloat vertices[8][3] = {
 
-		{ -(float)size, -(float)size,  (float)size },{ (float)size, -(float)size,  (float)size },{ (float)size,  (float)size,  (float)size },{ -(float)size,  (float)size,  (float)size },
-	{ -(float)size, -(float)size, -(float)size },{ (float)size, -(float)size, -(float)size },{ (float)size,  (float)size, -(float)size },{ -(float)size, (float)size, -(float)size }
+		/*{ -10.0, -10.0,  10.0 },{ 10.0, -10.0,  10.0 },{ 10.0,  10.0,  10.0 },{ -10.0,  10.0,  10.0 },
+		{ -10.0, -10.0, -10.0 },{ 10.0, -10.0, -10.0 },{ 10.0,  10.0, -10.0 },{ -10.0,  10.0, -10.0 }*/
 
-	//	 //"Front" vertices
-	//	{ -700.0, -700.0,  700.0 },{ 700.0, -700.0,  700.0 },{ 700.0,  700.0,  700.0 },{ -700.0,  700.0,  700.0 },
-	//	
-	//	 //"Back" vertices
-	//{ -700.0, -700.0, -700.0 },{ 700.0, -700.0, -700.0 },{ 700.0,  700.0, -700.0 },{ -700.0,  700.0, -700.0 }
+	{ -(GLfloat)size, -(GLfloat)size,  (GLfloat)size },
+	{ (GLfloat)size, -(GLfloat)size,  (GLfloat)size },
+	{ (GLfloat)size,  (GLfloat)size,  (GLfloat)size },
+	{ -(GLfloat)size,  (GLfloat)size,  (GLfloat)size },
+	{ -(GLfloat)size, -(GLfloat)size, -(GLfloat)size },
+	{ (GLfloat)size, -(GLfloat)size, -(GLfloat)size },
+	{ (GLfloat)size,  (GLfloat)size, -(GLfloat)size },
+	{ -(GLfloat)size, (GLfloat)size, -(GLfloat)size }
+
+		 //"Front" vertices
+		//{ -700.0, -700.0,  700.0 },{ 700.0, -700.0,  700.0 },{ 700.0,  700.0,  700.0 },{ -700.0,  700.0,  700.0 },
+		
+		 //"Back" vertices
+	    //{ -700.0, -700.0, -700.0 },{ 700.0, -700.0, -700.0 },{ 700.0,  700.0, -700.0 },{ -700.0,  700.0, -700.0 }
 	};
-
-
 
 	// Note that GL_QUADS is deprecated in modern OpenGL (and removed from OSX systems).
 	// This is why we need to draw each face as 2 triangles instead of 1 quadrilateral
 	const GLuint indices[6][6] = {
 		// Front face
 		{ 0, 1, 2, 2, 3, 0 },
-		//        {2, 1, 0, 0, 3, 2},
 		// Top face
-	{ 1, 5, 6, 6, 2, 1 },
-	//        {6, 5, 1, 1, 2, 6},
-	// Back face
-	{ 7, 6, 5, 5, 4, 7 },
-	//        {5, 6, 7, 7, 4, 5},
-	// Bottom face
-	{ 4, 0, 3, 3, 7, 4 },
-	//        {3, 0, 4, 4, 7, 3},
-	// Left face
-	{ 4, 5, 1, 1, 0, 4 },
-	//        {1, 5, 4, 4, 0, 1},
-	// Right face
-	{ 3, 2, 6, 6, 7, 3 }
-	//        {6, 2, 3, 3, 7, 6}
+		{ 1, 5, 6, 6, 2, 1 },
+		// Back face
+		{ 7, 6, 5, 5, 4, 7 },
+		// Bottom face
+		{ 4, 0, 3, 3, 7, 4 },
+		// Left face
+		{ 4, 5, 1, 1, 0, 4 },
+		// Right face
+		{ 3, 2, 6, 6, 7, 3 }
 	};
 };
 
 #endif
+
