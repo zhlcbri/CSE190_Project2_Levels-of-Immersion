@@ -69,14 +69,20 @@ using namespace std;
 #include <GL/glew.h>
 
 /////// Custom variables
-bool cube_size_up; // set to true with LThumbStick to right
-bool cube_size_down; // set to true with LThumbStick to left
-bool cube_size_reset; // set to true with LThumbStick pressed in
+bool cube_size_up = false; // set to true with LThumbStick to right
+bool cube_size_down = false; // set to true with LThumbStick to left
+bool cube_size_reset = false; // set to true with LThumbStick pressed in
 
+bool iod_up = false; // true when RThumbStick to right
+bool iod_down = false; // true when RThumbStick to left
+bool iod_reset = false; // true when RThumbStick pressed in
+
+// Button X controls
 bool x1; // show entire scene (cubes and sky box in stereo)
 bool x2; // show just the sky box in stereo
 bool x3; // show just the sky box in mono
 
+// Button A controls
 bool a1 = true; // 3D stereo
 bool a2 = false; // mono (the same image rendered on both eyes)
 bool a3 = false; // left eye only (right eye black)
@@ -476,7 +482,18 @@ public:
 			ovrMatrix4f ovrPerspectiveProjection =
 				ovrMatrix4f_Projection(erd.Fov, 0.01f, 1000.0f, ovrProjection_ClipRangeOpenGL);
 			_eyeProjections[eye] = ovr::toGlm(ovrPerspectiveProjection);
+			//////////////
 			_viewScaleDesc.HmdToEyePose[eye] = erd.HmdToEyePose; // cse190: adjust the eye separation here - need to use 3D vector from central point on Rift for each eye
+			
+			
+
+			/*if (iod_up) {
+				erd.HmdToEyePose.Position.x = erd.HmdToEyePose.Position.x + 0.01f;
+				_viewScaleDesc.HmdToEyePose[eye] = erd.HmdToEyePose;
+			}
+			else {
+				_viewScaleDesc.HmdToEyePose[eye] = erd.HmdToEyePose;
+			}*/
 
 			ovrFovPort & fov = _sceneLayer.Fov[eye] = _eyeRenderDescs[eye].Fov;
 			auto eyeSize = ovr_GetFovTextureSize(_session, eye, fov, 1.0f);
@@ -562,6 +579,10 @@ protected:
 		cube_size_down = false;
 		cube_size_reset = false;
 
+		iod_up = false;
+		iod_down = false;
+		iod_reset = false;
+
 		ovrInputState inputState;
 		if (OVR_SUCCESS(ovr_GetInputState(_session, ovrControllerType_Touch, &inputState)))
 		{
@@ -572,19 +593,34 @@ protected:
 			if (inputState.Buttons>0) cerr << "Button state:" << inputState.Buttons << endl;*/
 			// cse190: no need to print the above messages
 
+
+			// Logic to vary interocular distance
+			if (inputState.Thumbstick[ovrHand_Right].x > 0) {
+				cout << "iod up" << endl;
+				iod_up = true;
+			}
+			else if (inputState.Thumbstick[ovrHand_Right].x < 0) {
+				cout << "iod down" << endl;
+				iod_down = true;
+			}
+			else if (inputState.Buttons & ovrButton_RThumb) {
+				cout << "iod reset" << endl;
+				iod_reset = true;
+			}
+
+
 			// Logic to resize cubes
 			if (inputState.Thumbstick[ovrHand_Left].x < 0) {
 				//cout << "left thumbstick to the left" << endl;
 				cube_size_down = true;
 				//cube_size_up = false;
 			}
-			if (inputState.Thumbstick[ovrHand_Left].x > 0) { 
+			else if (inputState.Thumbstick[ovrHand_Left].x > 0) { 
 				//cout << "left thumbstick to the right" << endl; 
 				cube_size_up = true;
 				//cube_size_down = false;
 			}
-
-			if (inputState.Buttons & ovrButton_LThumb) {
+			else if (inputState.Buttons & ovrButton_LThumb) {
 				//cout << "left thubstick pressed in" << endl;
 				cube_size_reset = true;
 			}
@@ -623,6 +659,7 @@ protected:
 					a3 = false;*/
 					a4 = false;
 					a5 = true;
+					cout << "inverted stereo mode" << endl;
 				}
 				else if (a5) {
 					a1 = true;
@@ -688,7 +725,7 @@ protected:
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo);
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, curTexId, 0);
 		
-		glClearColor(0.2f, 0.3f, 0.8f, 1.0f); // change background color to light blue
+		//glClearColor(0.2f, 0.3f, 0.8f, 1.0f); // change background color to light blue
 		
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -700,6 +737,7 @@ protected:
 			
 			if (a1) {
 				renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is for normal stereo rendering
+				// TODO call this twice one time for each eye
 			}
 
 			//renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
@@ -713,6 +751,10 @@ protected:
 			}
 			else if (a4) {
 				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]));  // cse190: this is how to render to only one eye
+			}
+			else if (a5) {
+				if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]));
+				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]));
 			}
 
 		});
@@ -770,7 +812,7 @@ public:
 	const char * CUBE_VERT_PATH = "shader_cube.vert";
 	const char * CUBE_FRAG_PATH = "shader_cube.frag";
 
-	glm::mat4 cubeScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f)); // only mat used to scale cube
+	glm::mat4 cubeScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.3f, 0.3f, 0.3f)); // only mat used to scale cube
 
 	ColorCubeScene() {
 		skybox = new Cube(1, skybox_faces, true);
@@ -788,7 +830,7 @@ public:
 	}
 
 	void resetCubes() {
-		cubeScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
+		cubeScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
 	} //
 
 	glm::mat4 scaleCubes(float val) {
@@ -809,11 +851,15 @@ public:
 
 		// change cubeScaleMat according to booleans
 		if (cube_size_up) {
-			cubeScaleMat = scaleCubes(1.01f);
+			if (cubeScaleMat[3][0] < 0.5f && cubeScaleMat[3][1] < 0.5f && cubeScaleMat[3][2] < 0.5f) {
+				cubeScaleMat = scaleCubes(1.01f);
+			}
 		}
-		/*if (cube_size_down) {
-			cubeScaleMat = scaleCubes(0.09f);
-		}*/
+		if (cube_size_down) {
+			if (cubeScaleMat[3].x > 0.01f && cubeScaleMat[3].y > 0.01f && cubeScaleMat[3].z > 0.01f) {
+				cubeScaleMat = scaleCubes(0.09f);
+			}			
+		}
 
 		if (cube_size_reset) {
 			resetCubes();
@@ -870,7 +916,6 @@ public:
 protected:
 	void initGl() override {
 		RiftApp::initGl();
-		//glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
 		glClearColor(0.2f, 0.3f, 0.8f, 1.0f); // change background color to light blue
 
 		glEnable(GL_DEPTH_TEST);
