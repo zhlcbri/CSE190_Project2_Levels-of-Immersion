@@ -73,15 +73,15 @@ bool cube_size_up; // set to true with LThumbStick to right
 bool cube_size_down; // set to true with LThumbStick to left
 bool cube_size_reset; // set to true with LThumbStick pressed in
 
-bool x1; // show entire scene (cubes and sky box)
+bool x1; // show entire scene (cubes and sky box in stereo)
 bool x2; // show just the sky box in stereo
 bool x3; // show just the sky box in mono
 
-bool a1; // 3D stereo
-bool a2; // mono (the same image rendered on both eyes)
-bool a3; // left eye only (right eye black)
-bool a4; // right eye only (left eye black)
-bool a5; // inverted stereo (left eye image rendered to right eye and vice versa)
+bool a1 = true; // 3D stereo
+bool a2 = false; // mono (the same image rendered on both eyes)
+bool a3 = false; // left eye only (right eye black)
+bool a4 = false; // right eye only (left eye black)
+bool a5 = false; // inverted stereo (left eye image rendered to right eye and vice versa)
 
 
 bool checkFramebufferStatus(GLenum target = GL_FRAMEBUFFER) {
@@ -462,10 +462,6 @@ private:
 	uvec2 _mirrorSize;
 
 public:
-	///////// Custom variables
-	//bool cube_size_up; // set to true with LThumbStick to right
-	//bool cube_size_down; // set to true with LThumbStick to left
-	//bool cube_size_reset; // set to true with LThumbStick pressed in
 
 	RiftApp() {
 		using namespace ovr;
@@ -576,6 +572,7 @@ protected:
 			if (inputState.Buttons>0) cerr << "Button state:" << inputState.Buttons << endl;*/
 			// cse190: no need to print the above messages
 
+			// Logic to resize cubes
 			if (inputState.Thumbstick[ovrHand_Left].x < 0) {
 				//cout << "left thumbstick to the left" << endl;
 				cube_size_down = true;
@@ -590,6 +587,51 @@ protected:
 			if (inputState.Buttons & ovrButton_LThumb) {
 				//cout << "left thubstick pressed in" << endl;
 				cube_size_reset = true;
+			}
+
+			// Logic to cycle between five modes with the 'A' button
+			if (inputState.Buttons == 1 & ovrButton_A) {  // how to detect button press for only one frame?
+				cout << "Button A pressed" << endl;
+
+				if (a1) {
+					a1 = false;
+					a2 = true;
+					/*a3 = false;
+					a4 = false;
+					a5 = false;*/
+					cout << "monoscopic mode (left eye image rendered on both eyes)" << endl;
+				}
+				else if (a2) {
+					//a1 = false;
+					a2 = false;
+					a3 = true;
+					/*a4 = false;
+					a5 = false;*/
+					cout << "only rendering to left eye" << endl;
+				}
+				else if (a3) {
+					/*a1 = false;
+					a2 = false;*/
+					a3 = false;
+					a4 = true;
+					//a5 = false;
+					cout << "only rendering to right eye" << endl;
+				}
+				else if (a4) {
+					/*a1 = false;
+					a2 = false;
+					a3 = false;*/
+					a4 = false;
+					a5 = true;
+				}
+				else if (a5) {
+					a1 = true;
+					/*a2 = false;
+					a3 = false;
+					a4 = false;*/
+					a5 = false;
+					cout << "back to default mode" << endl;
+				}
 			}
 
 		}
@@ -655,9 +697,23 @@ protected:
 			const auto& vp = _sceneLayer.Viewport[eye];
 			glViewport(vp.Pos.x, vp.Pos.y, vp.Size.w, vp.Size.h);
 			_sceneLayer.RenderPose[eye] = eyePoses[eye];
-			renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is for normal stereo rendering
+			
+			if (a1) {
+				renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is for normal stereo rendering
+			}
+
 			//renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
 //			if (eye==ovrEye_Left) renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is how to render to only one eye
+
+			else if (a2) {
+				renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Right]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
+			}
+			else if (a3) {
+				if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: this is how to render to only one eye
+			}
+			else if (a4) {
+				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]));  // cse190: this is how to render to only one eye
+			}
 
 		});
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
