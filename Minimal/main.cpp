@@ -458,7 +458,7 @@ private:
 	GLuint _mirrorFbo{ 0 };
 	ovrMirrorTexture _mirrorTexture;
 
-	ovrEyeRenderDesc _eyeRenderDescs[2];
+	ovrEyeRenderDesc _eyeRenderDescs[2]; // ?
 
 	mat4 _eyeProjections[2];
 
@@ -487,7 +487,6 @@ public:
 			_viewScaleDesc.HmdToEyePose[eye] = erd.HmdToEyePose; // cse190: adjust the eye separation here - need to use 3D vector from central point on Rift for each eye
 			
 			
-
 			/*if (iod_up) {
 				erd.HmdToEyePose.Position.x = erd.HmdToEyePose.Position.x + 0.01f;
 				_viewScaleDesc.HmdToEyePose[eye] = erd.HmdToEyePose;
@@ -506,7 +505,7 @@ public:
 		});
 		// Make the on screen window 1/4 the resolution of the render target
 		_mirrorSize = _renderTargetSize;
-		_mirrorSize /= 4;
+		_mirrorSize /= 2; // was 4 before
 
 	}
 
@@ -628,7 +627,7 @@ protected:
 
 			///////////////////////////////
 			// Logic to cycle between five modes with the 'A' button
-			if (inputState.Buttons == 1 && ovrButton_A) {  // how to detect button press for only one frame?
+			if (inputState.Buttons == ovrButton_A) {  // how to detect button press for only one frame?
 				cout << "Button A pressed" << endl;
 
 				if (a1) {
@@ -675,7 +674,7 @@ protected:
 
 			///////////////////////////////
 			// Logic to cycle between five modes with the 'X' button
-			if (inputState.Buttons == 1 && ovrButton_X) {
+			else if (inputState.Buttons == ovrButton_X) {
 				cout << "Button X pressed" << endl;
 
 				if (x1) {
@@ -777,21 +776,21 @@ protected:
 			}
 
 			//renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
-//			if (eye==ovrEye_Left) renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is how to render to only one eye
+			//if (eye==ovrEye_Left) renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is how to render to only one eye
 
-			//else if (a2) {
-			//	renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Right]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
-			//}
-			//else if (a3) {
-			//	if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: this is how to render to only one eye
-			//}
-			//else if (a4) {
-			//	if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]));  // cse190: this is how to render to only one eye
-			//}
-			//else if (a5) {
-			//	if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]));
-			//	if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]));
-			//}
+			else if (a2) {
+				renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]), true);  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
+			}
+			else if (a3) {
+				if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);  // cse190: this is how to render to only one eye
+			}
+			else if (a4) {
+				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]), false);  // cse190: this is how to render to only one eye
+			}
+			else if (a5) {
+				if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]), false);
+				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);
+			}
 
 		});
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
@@ -897,10 +896,11 @@ public:
 		cubeScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
 	} //
 
-	glm::mat4 scaleCubes(float val) {
-		//cubeScaleMat = glm::scale(cubeScaleMat, glm::vec3(val, val, val));
-		glm::mat4 mat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(val));
-		return mat;
+	void scaleCubes(float val) {
+
+		cubeScaleMat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(val));
+		/*glm::mat4 mat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(val));
+		return mat;*/
 	}
 
 	//void OBJObject::scale(float val) {
@@ -911,42 +911,84 @@ public:
 
 	void render(const mat4 & projection, const mat4 & modelview, bool isLeftEye) {
 
-		glUseProgram(cube_shader);
+		// change cubeScaleMat according to booleans
+		if (cube_size_up) {
+			if (cubeScaleMat[0][0] < 0.5f && cubeScaleMat[1][1] < 0.5f && cubeScaleMat[2][2] < 0.5f) {
+				//cout << "scaling up" << endl;
+				//cout << "cubeScaleMat[3]: ( " << cubeScaleMat[3].x << ", " << cubeScaleMat[3].y 
+				//	<< ", " << cubeScaleMat[3].z << ", " << cubeScaleMat[3].w << ")" << endl; // 0
+				scaleCubes(1.01f);
+			}
+		}
+		if (cube_size_down) {
+			if (cubeScaleMat[0][0] > 0.01f && cubeScaleMat[1][1] > 0.01f && cubeScaleMat[2][2] > 0.01f) {
+				cout << "scaling down" << endl;
+				cout << "cubeScaleMat: ( " << cubeScaleMat[0][0] << ", " << cubeScaleMat[1][1]
+					<< ", " << cubeScaleMat[2][2] << ")" << endl; // 0
+				scaleCubes(0.99f);
+			}
+		}
 
+		if (cube_size_reset) {
+			resetCubes();
+		}
+
+		glUseProgram(cube_shader);
 		GLuint uProjection = glGetUniformLocation(cube_shader, "model");
 
 		// render skybox
 		glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f, 100.0f, 100.0f));
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &scaleMat[0][0]);
 
-		// render different texture images for left and right eye to create stereo effect
-		if (isLeftEye) {
+		// render in different modes 
+		if (x1 || x2) {
+			// render different texture images for left and right eye to create stereo effect
+			if (isLeftEye) {
+				skybox_left->draw(cube_shader, projection, modelview);
+			}
+			else {
+				skybox_right->draw(cube_shader, projection, modelview);
+			}
+
+			if (x1) {
+				// render cubes
+				
+				//glUniformMatrix4fv(uProjection, 1, GL_FALSE, &cubeScaleMat[0][0]); // 
+
+				vec3 pos_1 = vec3(0.0f, 0.0f, -4.0f);
+				vec3 pos_2 = vec3(0.0f, 0.0f, -8.0f);
+
+				glm::mat4 posMat = glm::translate(glm::mat4(1.0f), pos_1);
+				glm::mat4 posMat_in = glm::translate(glm::mat4(1.0f), -pos_1);
+				glm::mat4 M = posMat * cubeScaleMat * posMat_in;
+
+				/*glm::mat4 M = cubeScaleMat * posMat;*/
+				//glm::mat4 M = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)) * posMat; // works to scale up
+
+				// draw closer cube
+				glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
+				cube_1->draw(cube_shader, projection, modelview);
+
+				posMat = glm::translate(glm::mat4(1.0f), pos_2);
+				posMat_in = glm::translate(glm::mat4(1.0f), -pos_2);
+				M = posMat * cubeScaleMat * posMat_in;
+				//M = posMat * cubeScaleMat;
+				/*M = cubeScaleMat * posMat;*/
+
+				// draw further cube
+				glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
+				cube_1->draw(cube_shader, projection, modelview);
+			}
+		}
+		else if (x3) {
+			// render just skybox in mono
 			skybox_left->draw(cube_shader, projection, modelview);
 		}
-		else {
-			skybox_right->draw(cube_shader, projection, modelview);
-		}		
+		else if (x4) {
+			// render custom skybox
+			skybox_room->draw(cube_shader, projection, modelview);
+		}
 
-		// render cubes
-		// scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
-
-		vec3 pos_1 = vec3(0.0f, 0.0f, -4.0f);
-		vec3 pos_2 = vec3(0.0f, 0.0f, -8.0f);
-
-		glm::mat4 posMat = glm::translate(glm::mat4(1.0f), pos_1);
-		glm::mat4 M = cubeScaleMat * posMat;
-		//glm::mat4 M = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)) * posMat; // works to scale up
-
-		// draw closer cube
-		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
-		cube_1->draw(cube_shader, projection, modelview);
-
-		posMat = glm::translate(glm::mat4(1.0f), pos_2);
-		M = cubeScaleMat * posMat;
-
-		// draw further cube
-		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
-		cube_1->draw(cube_shader, projection, modelview);
 
 	}
 

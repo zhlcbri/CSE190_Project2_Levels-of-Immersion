@@ -238,10 +238,10 @@ public:
 	};
 
 
-	void scale(GLuint shaderProgram, float val) {	
+	/*void scale(GLuint shaderProgram, float val) {	
 		glm::mat4 & temp = glm::scale(glm::mat4(1.0f), glm::vec3(val, val, val));
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &temp[0][0]);
-	}
+	}*/
 	//
 
 	// Define the coordinates and indices needed to draw the cube. Note that it is not necessary
