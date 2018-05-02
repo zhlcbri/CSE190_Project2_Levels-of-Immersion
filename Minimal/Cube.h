@@ -44,6 +44,7 @@ using namespace std;
 
 unsigned int skyboxTexture_left;
 unsigned int skyboxTexture_right;
+unsigned int skyboxTexture_room;
 unsigned int cubemapTexture;
 
 class Cube {
@@ -54,18 +55,19 @@ private:
 public:
 	bool isSkybox = false;
 	bool isLeftEye = false;
-	//bool isRightEye = false;
+	bool isRoom = false;
 
 	glm::mat4 toWorld;
 
 	GLuint VBO, VAO, EBO;
 	GLuint uProjection, uModelview;
 
-	Cube(int mySize, vector<string> faces, bool check, bool isLeft)
+	Cube(int mySize, vector<string> faces, bool check, bool isLeft, bool room)
 	{
 		size = mySize;
 		isSkybox = check;
 		isLeftEye = isLeft;
+		isRoom = room;
 
 		//toWorld = glm::scale(glm::mat4(1.0f), glm::vec3((float)size));
 		toWorld = glm::mat4(1.0f);
@@ -73,7 +75,10 @@ public:
 		myFaces = faces;
 
 		if (check) {
-			if (isLeftEye) {
+			if (room) {
+				skyboxTexture_room = loadCubemap(faces);
+			}
+			else if (isLeftEye) {
 				skyboxTexture_left = loadCubemap(faces);
 			}
 			else {
@@ -83,13 +88,6 @@ public:
 		else {
 			cubemapTexture = loadCubemap(faces);
 		}
-
-		/*if (check) {
-			skyboxTexture = loadCubemap(faces);
-		}
-		else {
-			cubemapTexture = loadCubemap(faces);
-		}*/
 
 		// Create array object and buffers. Remember to delete your buffers when the object is destroyed!
 		glGenVertexArrays(1, &VAO);
@@ -193,7 +191,14 @@ public:
 		if (isSkybox) {
 			glCullFace(GL_FRONT);
 
-			if (isLeftEye) {
+			if (isRoom) {
+				glUniform1i(uMode, 2); // texture mode 2
+
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture_room);
+				glUniform1i(glGetUniformLocation(shaderProgram, "skyboxTex_room"), 2);
+			}
+			else if (isLeftEye) {
 				glUniform1i(uMode, 0); // texture mode 0
 
 				glActiveTexture(GL_TEXTURE0);
@@ -211,11 +216,11 @@ public:
 		}
 		else {
 			glCullFace(GL_BACK);
-			glUniform1i(uMode, 2); // texture mode 2
+			glUniform1i(uMode, 3); // texture mode 3
 
-			glActiveTexture(GL_TEXTURE2);
+			glActiveTexture(GL_TEXTURE3);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-			glUniform1i(glGetUniformLocation(shaderProgram, "cubeTex"), 2);
+			glUniform1i(glGetUniformLocation(shaderProgram, "cubeTex"), 3);
 		}
 
 		// Enable depth test
@@ -232,65 +237,12 @@ public:
 		glDepthFunc(GL_LESS); // set depth function back to default
 	};
 
-	//void draw(GLuint shaderProgram, const glm::mat4 & projection, const glm::mat4 & modelview)
-	//{
-	//	// If drawing skybox cull front face
-	//	// otherwise cull back face
-
-	//	glEnable(GL_CULL_FACE);
-	//	GLuint uMode = glGetUniformLocation(shaderProgram, "tex_mode");
-	//	
-	//	// We need to calculate this because modern OpenGL does not keep track of any matrix other than the viewport (D)
-	//	// Consequently, we need to forward the projection, view, and model matrices to the shader programs
-	//	// Get the location of the uniform variables "projection" and "modelview"
-	//	uProjection = glGetUniformLocation(shaderProgram, "projection");// light.colorvec3
-	//																	//    uModelview = glGetUniformLocation(shaderProgram, "modelview");
-	//	uModelview = glGetUniformLocation(shaderProgram, "view");
-
-	//	// Now send these values to the shader program
-	//	glUniformMatrix4fv(uProjection, 1, GL_FALSE, &projection[0][0]);
-	//	glUniformMatrix4fv(uModelview, 1, GL_FALSE, &modelview[0][0]);
-
-	//	// skybox cube
-	//	glBindVertexArray(VAO);
-
-	//	if (isSkybox) {
-	//		glCullFace(GL_FRONT);
-	//		glUniform1i(uMode, 0); // texture mode 0
-	//		
-	//		glActiveTexture(GL_TEXTURE0);
-	//		glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
-	//		glUniform1i(glGetUniformLocation(shaderProgram, "skyboxTex"), 0);
-	//	}
-	//	else {
-	//		glCullFace(GL_BACK);
-	//		glUniform1i(uMode, 1); // texture mode 1
-
-	//		glActiveTexture(GL_TEXTURE1);
-	//		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-	//		glUniform1i(glGetUniformLocation(shaderProgram, "cubeTex"), 1);
-	//	}
-
-	//	// Enable depth test
-	//	glEnable(GL_DEPTH_TEST);
-	//	// Accept fragment if it closer to the camera than the former one
-	//	glDepthFunc(GL_LESS);
-
-	//	// Draw triangles
-	//	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-	//	glBindVertexArray(0);
-
-	//	/*glDepthMask(GL_TRUE);*/
-
-	//	glDepthFunc(GL_LESS); // set depth function back to default
-	//};
-
 
 	void scale(GLuint shaderProgram, float val) {	
 		glm::mat4 & temp = glm::scale(glm::mat4(1.0f), glm::vec3(val, val, val));
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &temp[0][0]);
 	}
-
+	//
 
 	// Define the coordinates and indices needed to draw the cube. Note that it is not necessary
 	// to use a 2-dimensional array, since the layout in memory is the same as a 1-dimensional array.

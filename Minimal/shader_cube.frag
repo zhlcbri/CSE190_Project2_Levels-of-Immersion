@@ -5,11 +5,12 @@ in vec3 TexCoords;
 
 uniform samplerCube skyboxTex_left; // skybox texture for left eye
 uniform samplerCube skyboxTex_right; // skybox texture for right eye
+uniform samplerCube skyboxTex_room; // room texture
 uniform samplerCube cubeTex; // cube texture
 
-// uniform int tex_mode; // 0 for skybox texture, 1 for cube texture
-
-uniform int tex_mode; // 0 for skybox texture (left eye), 1 for skybox texture (right eye), 2 for cube texture
+// 0 for skybox texture (left eye), 1 for skybox texture (right eye)
+// 2 for room texture, 3 for cube texture
+uniform int tex_mode; 
 
 void main()
 {
@@ -20,6 +21,9 @@ void main()
 	} 
 	else if (tex_mode == 1) {
 	  FragColor = texture(skyboxTex_right, TexCoords);
+	}
+	else if (tex_mode == 2) {
+	  FragColor = texture(skyboxTex_room, TexCoords);
 	}
 	else {
 	  FragColor = texture(cubeTex, TexCoords);

@@ -78,9 +78,10 @@ bool iod_down = false; // true when RThumbStick to left
 bool iod_reset = false; // true when RThumbStick pressed in
 
 // Button X controls
-bool x1; // show entire scene (cubes and sky box in stereo)
-bool x2; // show just the sky box in stereo
-bool x3; // show just the sky box in mono
+bool x1 = true; // show entire scene (cubes and sky box in stereo)
+bool x2 = false; // show just the sky box in stereo
+bool x3 = false; // show just the sky box in mono
+bool x4 = false; // show room instead of bear skybox
 
 // Button A controls
 bool a1 = true; // 3D stereo
@@ -608,7 +609,7 @@ protected:
 				iod_reset = true;
 			}
 
-
+			////////////////////////
 			// Logic to resize cubes
 			if (inputState.Thumbstick[ovrHand_Left].x < 0) {
 				//cout << "left thumbstick to the left" << endl;
@@ -625,6 +626,7 @@ protected:
 				cube_size_reset = true;
 			}
 
+			///////////////////////////////
 			// Logic to cycle between five modes with the 'A' button
 			if (inputState.Buttons == 1 && ovrButton_A) {  // how to detect button press for only one frame?
 				cout << "Button A pressed" << endl;
@@ -671,6 +673,32 @@ protected:
 				}
 			}
 
+			///////////////////////////////
+			// Logic to cycle between five modes with the 'X' button
+			if (inputState.Buttons == 1 && ovrButton_X) {
+				cout << "Button X pressed" << endl;
+
+				if (x1) {
+					x1 = false;
+					x2 = true;
+					cout << "showing just the sky box in stereo" << endl;
+				}
+				else if (x2) {
+					x2 = false;
+					x3 = true;
+					cout << "showing just the sky box in mono" << endl;
+				}
+				else if (x3) {
+					x3 = false;
+					x4 = true;
+					cout << "showing my room" << endl;
+				}
+				else if (x4) {
+					x4 = false;
+					x1 = true;
+					cout << "showing the entire scene" << endl;
+				}
+			}
 		}
 	}
 
@@ -798,6 +826,7 @@ public:
 	Cube * cube_1;
 	Cube * skybox_left;
 	Cube * skybox_right;
+	Cube * skybox_room;
 
 	GLuint cube_shader;
 
@@ -808,6 +837,17 @@ public:
 		"cube_pattern.ppm",
 		"cube_pattern.ppm",
 		"cube_pattern.ppm"
+	};
+
+	vector<string> skybox_faces_room = {
+		// 2 are flipped horizontally
+		// 3 are flipped vertically
+		"skybox_room/px_2.ppm",
+		"skybox_room/nx_2.ppm",
+		"skybox_room/py_3.ppm",
+		"skybox_room/ny_3.ppm",
+		"skybox_room/nz_2.ppm",
+		"skybox_room/pz_2.ppm",
 	};
 
 	vector<string> skybox_faces_left = {
@@ -834,11 +874,13 @@ public:
 	glm::mat4 cubeScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.3f, 0.3f, 0.3f)); // only mat used to scale cube
 
 	ColorCubeScene() {
-		skybox_left = new Cube(1, skybox_faces_left, true, true);
+		skybox_left = new Cube(1, skybox_faces_left, true, true, false);
 
-		skybox_right = new Cube(1, skybox_faces_right, true, false);
+		skybox_right = new Cube(1, skybox_faces_right, true, false, false);
 
-		cube_1 = new Cube(1, cube_faces, false, false); // first cube of size 1
+		skybox_room = new Cube(1, skybox_faces_room, true, false, true);
+
+		cube_1 = new Cube(1, cube_faces, false, false, false); // first cube of size 1
 
 		cube_shader = LoadShaders(CUBE_VERT_PATH, CUBE_FRAG_PATH);
 	}
@@ -883,7 +925,7 @@ public:
 		}
 		else {
 			skybox_right->draw(cube_shader, projection, modelview);
-		}	
+		}		
 
 		// render cubes
 		// scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
