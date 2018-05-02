@@ -894,37 +894,22 @@ public:
 
 	void resetCubes() {
 		cubeScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
-	} //
+	} 
 
 	void scaleCubes(float val) {
-
 		cubeScaleMat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(val));
-		/*glm::mat4 mat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(val));
-		return mat;*/
 	}
-
-	//void OBJObject::scale(float val) {
-	//	scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(val));
-	//	this->toWorld = this->toWorld * scaleMat;
-	//	sVal *= val;
-	//}
 
 	void render(const mat4 & projection, const mat4 & modelview, bool isLeftEye) {
 
 		// change cubeScaleMat according to booleans
 		if (cube_size_up) {
 			if (cubeScaleMat[0][0] < 0.5f && cubeScaleMat[1][1] < 0.5f && cubeScaleMat[2][2] < 0.5f) {
-				//cout << "scaling up" << endl;
-				//cout << "cubeScaleMat[3]: ( " << cubeScaleMat[3].x << ", " << cubeScaleMat[3].y 
-				//	<< ", " << cubeScaleMat[3].z << ", " << cubeScaleMat[3].w << ")" << endl; // 0
 				scaleCubes(1.01f);
 			}
 		}
 		if (cube_size_down) {
 			if (cubeScaleMat[0][0] > 0.01f && cubeScaleMat[1][1] > 0.01f && cubeScaleMat[2][2] > 0.01f) {
-				cout << "scaling down" << endl;
-				cout << "cubeScaleMat: ( " << cubeScaleMat[0][0] << ", " << cubeScaleMat[1][1]
-					<< ", " << cubeScaleMat[2][2] << ")" << endl; // 0
 				scaleCubes(0.99f);
 			}
 		}
@@ -952,18 +937,13 @@ public:
 
 			if (x1) {
 				// render cubes
-				
-				//glUniformMatrix4fv(uProjection, 1, GL_FALSE, &cubeScaleMat[0][0]); // 
-
+				// specify positions
 				vec3 pos_1 = vec3(0.0f, 0.0f, -4.0f);
 				vec3 pos_2 = vec3(0.0f, 0.0f, -8.0f);
 
 				glm::mat4 posMat = glm::translate(glm::mat4(1.0f), pos_1);
 				glm::mat4 posMat_in = glm::translate(glm::mat4(1.0f), -pos_1);
 				glm::mat4 M = posMat * cubeScaleMat * posMat_in;
-
-				/*glm::mat4 M = cubeScaleMat * posMat;*/
-				//glm::mat4 M = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)) * posMat; // works to scale up
 
 				// draw closer cube
 				glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
@@ -972,8 +952,6 @@ public:
 				posMat = glm::translate(glm::mat4(1.0f), pos_2);
 				posMat_in = glm::translate(glm::mat4(1.0f), -pos_2);
 				M = posMat * cubeScaleMat * posMat_in;
-				//M = posMat * cubeScaleMat;
-				/*M = cubeScaleMat * posMat;*/
 
 				// draw further cube
 				glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
@@ -991,64 +969,6 @@ public:
 
 
 	}
-
-	//void render(const mat4 & projection, const mat4 & modelview) { 
-
-	//	// set scaling range
-
-	//	// change cubeScaleMat according to booleans
-	//	if (cube_size_up) {
-	//		if (cubeScaleMat[3][0] < 0.5f && cubeScaleMat[3][1] < 0.5f && cubeScaleMat[3][2] < 0.5f) {
-	//			cubeScaleMat = scaleCubes(1.01f);
-	//		}
-	//	}
-	//	if (cube_size_down) {
-	//		if (cubeScaleMat[3].x > 0.01f && cubeScaleMat[3].y > 0.01f && cubeScaleMat[3].z > 0.01f) {
-	//			cubeScaleMat = scaleCubes(0.09f);
-	//		}			
-	//	}
-
-	//	if (cube_size_reset) {
-	//		resetCubes();
-	//	}
-	//		
-	///*	glm::mat4 S = glm::scale(glm::mat4(1.0f), glm::vec3(1.05f));
-	//	cubeScaleMat = cubeScaleMat * S;*/
-	//	//cubeScaleMat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
-
-	//	glUseProgram(cube_shader);
-
-	//	GLuint uProjection = glGetUniformLocation(cube_shader, "model");
-
-	//	// render skybox
-	//	glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f, 100.0f, 100.0f));
-	//	glUniformMatrix4fv(uProjection, 1, GL_FALSE, &scaleMat[0][0]);
-
-	//	skybox_left->draw(cube_shader, projection, modelview);
-
-	//	// render cubes
-	//	// scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
-
-	//	vec3 pos_1 = vec3(0.0f, 0.0f, -4.0f);
-	//	vec3 pos_2 = vec3(0.0f, 0.0f, -8.0f);
-
-	//	glm::mat4 posMat = glm::translate(glm::mat4(1.0f), pos_1);
-	//	glm::mat4 M = cubeScaleMat * posMat;
-	//	//glm::mat4 M = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)) * posMat; // works to scale up
-
-	//	// draw closer cube
-	//	glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
-	//	cube_1->draw(cube_shader, projection, modelview);
-
-	//	posMat = glm::translate(glm::mat4(1.0f), pos_2);
-	//	M = cubeScaleMat * posMat;
-
-	//	// draw further cube
-	//	glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
-	//	cube_1->draw(cube_shader, projection, modelview);
-
-
-	//}
 };
 
 
