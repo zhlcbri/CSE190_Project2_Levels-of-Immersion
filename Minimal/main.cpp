@@ -736,27 +736,34 @@ protected:
 			_sceneLayer.RenderPose[eye] = eyePoses[eye];
 			
 			if (a1) {
-				renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is for normal stereo rendering
+				//renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is for normal stereo rendering
+
 				// TODO call this twice one time for each eye
-				// renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), isLeft = true); 
+				
+				if (eye == ovrEye_Left) {
+					renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);
+				}
+				else {
+					renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]), false);
+				}			
 			}
 
 			//renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
 //			if (eye==ovrEye_Left) renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is how to render to only one eye
 
-			else if (a2) {
-				renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Right]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
-			}
-			else if (a3) {
-				if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: this is how to render to only one eye
-			}
-			else if (a4) {
-				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]));  // cse190: this is how to render to only one eye
-			}
-			else if (a5) {
-				if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]));
-				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]));
-			}
+			//else if (a2) {
+			//	renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Right]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
+			//}
+			//else if (a3) {
+			//	if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: this is how to render to only one eye
+			//}
+			//else if (a4) {
+			//	if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]));  // cse190: this is how to render to only one eye
+			//}
+			//else if (a5) {
+			//	if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]));
+			//	if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]));
+			//}
 
 		});
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
@@ -773,7 +780,8 @@ protected:
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	}
 
-	virtual void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose) = 0;
+	/*virtual void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose) = 0;*/
+	virtual void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose, bool isLeft) = 0;
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -859,7 +867,7 @@ public:
 	//	sVal *= val;
 	//}
 
-	void render(const mat4 & projection, const mat4 & modelview/*, bool isLeftEye*/) {
+	void render(const mat4 & projection, const mat4 & modelview, bool isLeftEye) {
 
 		glUseProgram(cube_shader);
 
@@ -869,7 +877,13 @@ public:
 		glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f, 100.0f, 100.0f));
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &scaleMat[0][0]);
 
-		skybox_right->draw(cube_shader, projection, modelview);
+		// render different texture images for left and right eye to create stereo effect
+		if (isLeftEye) {
+			skybox_left->draw(cube_shader, projection, modelview);
+		}
+		else {
+			skybox_right->draw(cube_shader, projection, modelview);
+		}	
 
 		// render cubes
 		// scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
@@ -976,8 +990,13 @@ protected:
 		cubeScene.reset();
 	}
 
-	void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose) override {
-		cubeScene->render(projection, glm::inverse(headPose));
+	//void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose) override {
+	//	//cubeScene->render(projection, glm::inverse(headPose));
+	//}
+
+	// newly defined function
+	void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose, bool isLeft) {
+		cubeScene->render(projection, glm::inverse(headPose), isLeft);
 	}
 };
  
