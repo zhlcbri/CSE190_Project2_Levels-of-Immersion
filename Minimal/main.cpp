@@ -620,13 +620,13 @@ protected:
 				cube_size_up = true;
 				//cube_size_down = false;
 			}
-			else if (inputState.Buttons & ovrButton_LThumb) {
+			else if (inputState.Buttons && ovrButton_LThumb) {
 				//cout << "left thubstick pressed in" << endl;
 				cube_size_reset = true;
 			}
 
 			// Logic to cycle between five modes with the 'A' button
-			if (inputState.Buttons == 1 & ovrButton_A) {  // how to detect button press for only one frame?
+			if (inputState.Buttons == 1 && ovrButton_A) {  // how to detect button press for only one frame?
 				cout << "Button A pressed" << endl;
 
 				if (a1) {
@@ -738,6 +738,7 @@ protected:
 			if (a1) {
 				renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is for normal stereo rendering
 				// TODO call this twice one time for each eye
+				// renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), isLeft = true); 
 			}
 
 			//renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
@@ -787,7 +788,8 @@ struct ColorCubeScene {
 
 public:
 	Cube * cube_1;
-	Cube * skybox;
+	Cube * skybox_left;
+	Cube * skybox_right;
 
 	GLuint cube_shader;
 
@@ -800,7 +802,7 @@ public:
 		"cube_pattern.ppm"
 	};
 
-	vector<string> skybox_faces = {
+	vector<string> skybox_faces_left = {
 		"skybox_leftEye/nx.ppm",
 		"skybox_leftEye/px.ppm",
 		"skybox_leftEye/py_2.ppm", // rotated 
@@ -809,21 +811,33 @@ public:
 		"skybox_leftEye/pz.ppm",
 	};
 
+	vector<string> skybox_faces_right = {
+		"skybox_rightEye/nx.ppm",
+		"skybox_rightEye/px.ppm",
+		"skybox_rightEye/py_2.ppm", // rotated 
+		"skybox_rightEye/ny_2.ppm", // rotated
+		"skybox_rightEye/nz.ppm",
+		"skybox_rightEye/pz.ppm",
+	};
+
 	const char * CUBE_VERT_PATH = "shader_cube.vert";
 	const char * CUBE_FRAG_PATH = "shader_cube.frag";
 
 	glm::mat4 cubeScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.3f, 0.3f, 0.3f)); // only mat used to scale cube
 
 	ColorCubeScene() {
-		skybox = new Cube(1, skybox_faces, true);
+		skybox_left = new Cube(1, skybox_faces_left, true, true);
 
-		cube_1 = new Cube(1, cube_faces, false); // first cube of size 1
+		skybox_right = new Cube(1, skybox_faces_right, true, false);
+
+		cube_1 = new Cube(1, cube_faces, false, false); // first cube of size 1
 
 		cube_shader = LoadShaders(CUBE_VERT_PATH, CUBE_FRAG_PATH);
 	}
 
 	~ColorCubeScene(){
-		delete(skybox);
+		delete(skybox_left);
+		delete(skybox_right);
 		delete(cube_1);
 		glDeleteProgram(cube_shader);
 		// delete char * ?
@@ -845,29 +859,7 @@ public:
 	//	sVal *= val;
 	//}
 
-	void render(const mat4 & projection, const mat4 & modelview) { 
-
-		// set scaling range
-
-		// change cubeScaleMat according to booleans
-		if (cube_size_up) {
-			if (cubeScaleMat[3][0] < 0.5f && cubeScaleMat[3][1] < 0.5f && cubeScaleMat[3][2] < 0.5f) {
-				cubeScaleMat = scaleCubes(1.01f);
-			}
-		}
-		if (cube_size_down) {
-			if (cubeScaleMat[3].x > 0.01f && cubeScaleMat[3].y > 0.01f && cubeScaleMat[3].z > 0.01f) {
-				cubeScaleMat = scaleCubes(0.09f);
-			}			
-		}
-
-		if (cube_size_reset) {
-			resetCubes();
-		}
-			
-	/*	glm::mat4 S = glm::scale(glm::mat4(1.0f), glm::vec3(1.05f));
-		cubeScaleMat = cubeScaleMat * S;*/
-		//cubeScaleMat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+	void render(const mat4 & projection, const mat4 & modelview/*, bool isLeftEye*/) {
 
 		glUseProgram(cube_shader);
 
@@ -877,7 +869,7 @@ public:
 		glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f, 100.0f, 100.0f));
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &scaleMat[0][0]);
 
-		skybox->draw(cube_shader, projection, modelview);
+		skybox_right->draw(cube_shader, projection, modelview);
 
 		// render cubes
 		// scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
@@ -900,8 +892,65 @@ public:
 		glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
 		cube_1->draw(cube_shader, projection, modelview);
 
-
 	}
+
+	//void render(const mat4 & projection, const mat4 & modelview) { 
+
+	//	// set scaling range
+
+	//	// change cubeScaleMat according to booleans
+	//	if (cube_size_up) {
+	//		if (cubeScaleMat[3][0] < 0.5f && cubeScaleMat[3][1] < 0.5f && cubeScaleMat[3][2] < 0.5f) {
+	//			cubeScaleMat = scaleCubes(1.01f);
+	//		}
+	//	}
+	//	if (cube_size_down) {
+	//		if (cubeScaleMat[3].x > 0.01f && cubeScaleMat[3].y > 0.01f && cubeScaleMat[3].z > 0.01f) {
+	//			cubeScaleMat = scaleCubes(0.09f);
+	//		}			
+	//	}
+
+	//	if (cube_size_reset) {
+	//		resetCubes();
+	//	}
+	//		
+	///*	glm::mat4 S = glm::scale(glm::mat4(1.0f), glm::vec3(1.05f));
+	//	cubeScaleMat = cubeScaleMat * S;*/
+	//	//cubeScaleMat = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+
+	//	glUseProgram(cube_shader);
+
+	//	GLuint uProjection = glGetUniformLocation(cube_shader, "model");
+
+	//	// render skybox
+	//	glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f, 100.0f, 100.0f));
+	//	glUniformMatrix4fv(uProjection, 1, GL_FALSE, &scaleMat[0][0]);
+
+	//	skybox_left->draw(cube_shader, projection, modelview);
+
+	//	// render cubes
+	//	// scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(0.12f, 0.12f, 0.12f));
+
+	//	vec3 pos_1 = vec3(0.0f, 0.0f, -4.0f);
+	//	vec3 pos_2 = vec3(0.0f, 0.0f, -8.0f);
+
+	//	glm::mat4 posMat = glm::translate(glm::mat4(1.0f), pos_1);
+	//	glm::mat4 M = cubeScaleMat * posMat;
+	//	//glm::mat4 M = cubeScaleMat * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)) * posMat; // works to scale up
+
+	//	// draw closer cube
+	//	glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
+	//	cube_1->draw(cube_shader, projection, modelview);
+
+	//	posMat = glm::translate(glm::mat4(1.0f), pos_2);
+	//	M = cubeScaleMat * posMat;
+
+	//	// draw further cube
+	//	glUniformMatrix4fv(uProjection, 1, GL_FALSE, &M[0][0]);
+	//	cube_1->draw(cube_shader, projection, modelview);
+
+
+	//}
 };
 
 
