@@ -93,6 +93,17 @@ bool a3 = false; // left eye only (right eye black)
 bool a4 = false; // right eye only (left eye black)
 bool a5 = false; // inverted stereo (left eye image rendered to right eye and vice versa)
 
+// Button B controls
+bool b1 = true; // regular head tracking (both position and orientation)
+bool b2 = false; // orientation only (position frozen to what it just was before the mode was selected)
+bool b3 = false; // position only (orientation frozen to what it just was)
+bool b4 = false; // no tracking (position and orientation frozen to what they just were when the user pressed the button)
+
+glm::mat4 headPos_left_curr = glm::mat4(1.0f);
+glm::mat4 headPos_right_curr = glm::mat4(1.0f);
+glm::mat4 headPos_left_prev = glm::mat4(1.0f); // use this matrix to track head position each frame
+glm::mat4 headPos_right_prev = glm::mat4(1.0f);
+//////////////////////
 
 bool checkFramebufferStatus(GLenum target = GL_FRAMEBUFFER) {
 	GLuint status = glCheckFramebufferStatus(target);
@@ -489,11 +500,12 @@ public:
 
 			// cse190: adjust the eye separation here - need to use 3D vector from central point on Rift for each eye
 			_viewScaleDesc.HmdToEyePose[eye] = erd.HmdToEyePose; 
+
 			// get IOD see slides
 		    iod = abs(_viewScaleDesc.HmdToEyePose[0].Position.x - _viewScaleDesc.HmdToEyePose[1].Position.x);
 			original_iod = abs(_viewScaleDesc.HmdToEyePose[0].Position.x - _viewScaleDesc.HmdToEyePose[1].Position.x);
 			
-			cout << "original iod is: " << original_iod << endl;
+			//cout << "original iod is: " << original_iod << endl;
 
 			ovrFovPort & fov = _sceneLayer.Fov[eye] = _eyeRenderDescs[eye].Fov;
 			auto eyeSize = ovr_GetFovTextureSize(_session, eye, fov, 1.0f);
@@ -583,26 +595,19 @@ protected:
 			cube_size_down = false;
 			cube_size_reset = false;
 
-			/*if (inputState.HandTrigger[ovrHand_Right] > 0.5f)   cerr << "right middle trigger pressed" << endl;
-			if (inputState.IndexTrigger[ovrHand_Right] > 0.5f)	cerr << "right index trigger pressed"  << endl;
-			if (inputState.HandTrigger[ovrHand_Left] > 0.5f)    cerr << "left middle trigger pressed"  << endl;
-			if (inputState.IndexTrigger[ovrHand_Left] > 0.5f)	cerr << "left index trigger pressed"   << endl;
-			if (inputState.Buttons>0) cerr << "Button state:" << inputState.Buttons << endl;*/
-			// cse190: no need to print the above messages
-
 			// x_pressed = false;
 
 			// Logic to vary interocular distance
 			if (inputState.Thumbstick[ovrHand_Right].x > 0) {
-				cout << "iod up" << endl;
+				//cout << "iod up" << endl;
 				iod_up = true;
 			}
 			else if (inputState.Thumbstick[ovrHand_Right].x < 0) {
-				cout << "iod down" << endl;
+				//cout << "iod down" << endl;
 				iod_down = true;
 			}
 			else if (inputState.Buttons & ovrButton_RThumb) {
-				cout << "iod reset" << endl;
+				//cout << "iod reset" << endl;
 				iod_reset = true;
 			}
 
@@ -626,47 +631,32 @@ protected:
 			///////////////////////////////
 			// Logic to cycle between five modes with the 'A' button
 			if (inputState.Buttons == ovrButton_A) {  // how to detect button press for only one frame?
-				cout << "Button A pressed" << endl;
+				//cout << "Button A pressed" << endl;
 
 				if (a1) {
 					a1 = false;
 					a2 = true;
-					/*a3 = false;
-					a4 = false;
-					a5 = false;*/
-					cout << "monoscopic mode (left eye image rendered on both eyes)" << endl;
+					//cout << "monoscopic mode (left eye image rendered on both eyes)" << endl;
 				}
 				else if (a2) {
-					//a1 = false;
 					a2 = false;
 					a3 = true;
-					/*a4 = false;
-					a5 = false;*/
-					cout << "only rendering to left eye" << endl;
+					//cout << "only rendering to left eye" << endl;
 				}
 				else if (a3) {
-					/*a1 = false;
-					a2 = false;*/
 					a3 = false;
 					a4 = true;
-					//a5 = false;
-					cout << "only rendering to right eye" << endl;
+					//cout << "only rendering to right eye" << endl;
 				}
 				else if (a4) {
-					/*a1 = false;
-					a2 = false;
-					a3 = false;*/
 					a4 = false;
 					a5 = true;
-					cout << "inverted stereo mode" << endl;
+					//cout << "inverted stereo mode" << endl;
 				}
 				else if (a5) {
 					a1 = true;
-					/*a2 = false;
-					a3 = false;
-					a4 = false;*/
 					a5 = false;
-					cout << "back to default mode" << endl;
+					//cout << "back to default mode" << endl;
 				}
 			}
 
@@ -675,7 +665,7 @@ protected:
 			else if (inputState.Buttons == ovrButton_X) {
 
 				if (!x_pressed) {
-					cout << "Button X pressed" << endl;
+					//cout << "Button X pressed" << endl;
 					x_pressed = true;
 				}
 
@@ -684,30 +674,57 @@ protected:
 					if (x1) {
 						x1 = false;
 						x2 = true;
-						cout << "showing just the sky box in stereo" << endl;
+						//cout << "showing just the sky box in stereo" << endl;
 						x_pressed = false;
 					}
 					else if (x2) {
 						x2 = false;
 						x3 = true;
-						cout << "showing just the sky box in mono" << endl;
+						//cout << "showing just the sky box in mono" << endl;
 						x_pressed = false;
 					}
 					else if (x3) {
 						x3 = false;
 						x4 = true;
-						cout << "showing my room" << endl;
+						//cout << "showing my room" << endl;
 						x_pressed = false;
 					}
 					else if (x4) {
 						x4 = false;
 						x1 = true;
-						cout << "showing the entire scene" << endl;
+						//cout << "showing the entire scene" << endl;
 						x_pressed = false;
 					}
 				}			
 			}
 
+			///////////////////////////////
+			// Logic to cycle between four head tracking modes with the 'B' button
+			else if (inputState.Buttons == ovrButton_B) {
+				if (b1) {
+					b1 = false;
+					b2 = true;
+					cout << "orientation only (position frozen to what it just was before the mode was selected)" << endl;
+				}
+				else if (b2) {
+					b2 = false;
+					b3 = true;
+					cout << "position only (orientation frozen to what it just was)" << endl;
+				}
+				else if (b3) {
+					b3 = false;
+					b4 = true;
+					cout << "no tracking (position and orientation frozen to what they just were when the user pressed the button)" << endl;
+				}
+				else if (b4) {
+					b4 = false;
+					b1 = true;
+					cout << "regular tracking (both position and orientation)" << endl;
+				}
+
+			}
+
+			/////////////
 			// change iod
 			if (iod_up && iod < 0.3) {
 				iod += 0.01;
@@ -772,14 +789,48 @@ protected:
 		ovrPosef eyePoses[2];
 		ovr_GetEyePoses(_session, frame, true, _viewScaleDesc.HmdToEyePose, eyePoses, &_sceneLayer.SensorSampleTime);
 
+		///////////////////////////////
+		///// head positions this frame
+
+		headPos_left_curr = ovr::toGlm(eyePoses[ovrEye_Left]);
+		headPos_right_curr = ovr::toGlm(eyePoses[ovrEye_Right]);
+
+		if (b1) {
+			// regular tracking
+
+			/*headPos_left_curr = ovr::toGlm(eyePoses[ovrEye_Left]);
+			headPos_right_curr = ovr::toGlm(eyePoses[ovrEye_Right]);*/
+		}
+		else if (b2) {
+			// orientation only
+			// position frozen to last frame
+			headPos_left_curr[3] = headPos_left_prev[3];
+			headPos_right_curr[3] = headPos_right_prev[3];
+		}
+		else if (b3) {
+			// position only
+			// orientation frozen to last frame
+			headPos_left_curr[0] = headPos_left_prev[0];
+			headPos_left_curr[1] = headPos_left_prev[1];
+			headPos_left_curr[2] = headPos_left_prev[2];
+
+			headPos_right_curr[0] = headPos_right_prev[0];
+			headPos_right_curr[1] = headPos_right_prev[1];
+			headPos_right_curr[2] = headPos_right_prev[2];
+		}
+		else if (b4) {
+			// no tracking
+			// position and orientation frozen to last frame
+			headPos_left_curr = headPos_left_prev;
+			headPos_right_curr = headPos_right_prev;
+		}
+
 		int curIndex;
 		ovr_GetTextureSwapChainCurrentIndex(_session, _eyeTexture, &curIndex);
 		GLuint curTexId;
 		ovr_GetTextureSwapChainBufferGL(_session, _eyeTexture, curIndex, &curTexId);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo);
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, curTexId, 0);
-		
-		//glClearColor(0.2f, 0.3f, 0.8f, 1.0f); // change background color to light blue
 		
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -792,31 +843,51 @@ protected:
 			if (a1) {
 				//renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is for normal stereo rendering
 
-				// TODO call this twice one time for each eye
-				
+				// call renderScene() twice one time for each eye
 				if (eye == ovrEye_Left) {
-					renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);
+					//renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);
+
+					renderScene(_eyeProjections[ovrEye_Left], headPos_left_curr, true);
+
 				}
 				else {
-					renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]), false);
+					//renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]), false);
+
+					renderScene(_eyeProjections[ovrEye_Right], headPos_right_curr, true);
+
 				}			
 			}
 
-			//renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]));  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
-			//if (eye==ovrEye_Left) renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[eye]));  // cse190: this is how to render to only one eye
-
 			else if (a2) {
-				renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]), true);  // cse190: use eyePoses[ovrEye_Left] to render one eye's view to both eyes = monoscopic view
+				// render one eye's view to both eyes = monoscopic view
+				/*renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]), true);*/
+
+				renderScene(_eyeProjections[eye], headPos_left_curr, true);
 			}
 			else if (a3) {
-				if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);  // cse190: this is how to render to only one eye
+				// render to only left eye
+				if (eye == ovrEye_Left) {
+					//renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);
+
+					renderScene(_eyeProjections[ovrEye_Left], headPos_left_curr, true);
+				}
+				
 			}
 			else if (a4) {
-				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]), false);  // cse190: this is how to render to only one eye
+				// render to only right eye
+				if (eye == ovrEye_Right) {
+					//renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]), false);
+
+					renderScene(_eyeProjections[ovrEye_Right], headPos_right_curr, false);
+				}
 			}
 			else if (a5) {
-				if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]), false);
-				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);
+				// render left eye to right eye and vice versa - inverted stereo
+				/*if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]), false);
+				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);*/
+
+				if (eye == ovrEye_Left) renderScene(_eyeProjections[ovrEye_Right], headPos_right_curr, false);
+				if (eye == ovrEye_Right) renderScene(_eyeProjections[ovrEye_Left], headPos_left_curr, true);
 			}
 
 		});
@@ -832,6 +903,11 @@ protected:
 		glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mirrorTextureId, 0);
 		glBlitFramebuffer(0, 0, _mirrorSize.x, _mirrorSize.y, 0, _mirrorSize.y, _mirrorSize.x, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+
+
+		/////////// head positions the previous frame
+		headPos_left_prev = headPos_left_curr;
+		headPos_right_prev = headPos_right_curr;
 	}
 
 	/*virtual void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose) = 0;*/
@@ -1028,6 +1104,7 @@ protected:
 	// newly defined function
 	// To freeze head rotation and/or position, manipulate mat4 headPose (see notes)
 	void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose, bool isLeft) {
+
 		cubeScene->render(projection, glm::inverse(headPose), isLeft);
 	}
 };
