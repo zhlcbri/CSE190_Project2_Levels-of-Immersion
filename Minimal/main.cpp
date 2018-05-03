@@ -73,11 +73,14 @@ bool cube_size_up = false; // set to true with LThumbStick to right
 bool cube_size_down = false; // set to true with LThumbStick to left
 bool cube_size_reset = false; // set to true with LThumbStick pressed in
 
+double iod = 0.0;
+double original_iod = 0.0;
 bool iod_up = false; // true when RThumbStick to right
 bool iod_down = false; // true when RThumbStick to left
 bool iod_reset = false; // true when RThumbStick pressed in
 
 // Button X controls
+bool x_pressed = false;
 bool x1 = true; // show entire scene (cubes and sky box in stereo)
 bool x2 = false; // show just the sky box in stereo
 bool x3 = false; // show just the sky box in mono
@@ -483,17 +486,14 @@ public:
 			ovrMatrix4f ovrPerspectiveProjection =
 				ovrMatrix4f_Projection(erd.Fov, 0.01f, 1000.0f, ovrProjection_ClipRangeOpenGL);
 			_eyeProjections[eye] = ovr::toGlm(ovrPerspectiveProjection);
-			//////////////
-			_viewScaleDesc.HmdToEyePose[eye] = erd.HmdToEyePose; // cse190: adjust the eye separation here - need to use 3D vector from central point on Rift for each eye
+
+			// cse190: adjust the eye separation here - need to use 3D vector from central point on Rift for each eye
+			_viewScaleDesc.HmdToEyePose[eye] = erd.HmdToEyePose; 
+			// get IOD see slides
+		    iod = abs(_viewScaleDesc.HmdToEyePose[0].Position.x - _viewScaleDesc.HmdToEyePose[1].Position.x);
+			original_iod = abs(_viewScaleDesc.HmdToEyePose[0].Position.x - _viewScaleDesc.HmdToEyePose[1].Position.x);
 			
-			
-			/*if (iod_up) {
-				erd.HmdToEyePose.Position.x = erd.HmdToEyePose.Position.x + 0.01f;
-				_viewScaleDesc.HmdToEyePose[eye] = erd.HmdToEyePose;
-			}
-			else {
-				_viewScaleDesc.HmdToEyePose[eye] = erd.HmdToEyePose;
-			}*/
+			cout << "original iod is: " << original_iod << endl;
 
 			ovrFovPort & fov = _sceneLayer.Fov[eye] = _eyeRenderDescs[eye].Fov;
 			auto eyeSize = ovr_GetFovTextureSize(_session, eye, fov, 1.0f);
@@ -575,14 +575,6 @@ protected:
 
 	void update() final override
 	{
-		cube_size_up = false;
-		cube_size_down = false;
-		cube_size_reset = false;
-
-		iod_up = false;
-		iod_down = false;
-		iod_reset = false;
-
 		ovrInputState inputState;
 		if (OVR_SUCCESS(ovr_GetInputState(_session, ovrControllerType_Touch, &inputState)))
 		{
@@ -593,6 +585,7 @@ protected:
 			if (inputState.Buttons>0) cerr << "Button state:" << inputState.Buttons << endl;*/
 			// cse190: no need to print the above messages
 
+			// x_pressed = false;
 
 			// Logic to vary interocular distance
 			if (inputState.Thumbstick[ovrHand_Right].x > 0) {
@@ -675,30 +668,63 @@ protected:
 			///////////////////////////////
 			// Logic to cycle between five modes with the 'X' button
 			else if (inputState.Buttons == ovrButton_X) {
-				cout << "Button X pressed" << endl;
 
-				if (x1) {
-					x1 = false;
-					x2 = true;
-					cout << "showing just the sky box in stereo" << endl;
+				if (!x_pressed) {
+					cout << "Button X pressed" << endl;
+					x_pressed = true;
 				}
-				else if (x2) {
-					x2 = false;
-					x3 = true;
-					cout << "showing just the sky box in mono" << endl;
-				}
-				else if (x3) {
-					x3 = false;
-					x4 = true;
-					cout << "showing my room" << endl;
-				}
-				else if (x4) {
-					x4 = false;
-					x1 = true;
-					cout << "showing the entire scene" << endl;
-				}
+
+				if (x_pressed) {
+
+					if (x1) {
+						x1 = false;
+						x2 = true;
+						cout << "showing just the sky box in stereo" << endl;
+						x_pressed = false;
+					}
+					else if (x2) {
+						x2 = false;
+						x3 = true;
+						cout << "showing just the sky box in mono" << endl;
+						x_pressed = false;
+					}
+					else if (x3) {
+						x3 = false;
+						x4 = true;
+						cout << "showing my room" << endl;
+						x_pressed = false;
+					}
+					else if (x4) {
+						x4 = false;
+						x1 = true;
+						cout << "showing the entire scene" << endl;
+						x_pressed = false;
+					}
+				}			
 			}
+
+			// change iod
+			if (iod_up) {
+				iod += 0.01;
+			}
+			else if (iod_down) {
+				iod -= 0.01;
+			}
+			else if (iod_reset) {
+				iod = original_iod;
+			}
+			_viewScaleDesc.HmdToEyePose[0].Position.x = (float)(-iod / 2);
+			_viewScaleDesc.HmdToEyePose[1].Position.x = (float)(iod / 2);
 		}
+
+		// reset bools
+		cube_size_up = false;
+		cube_size_down = false;
+		cube_size_reset = false;
+
+		iod_up = false;
+		iod_down = false;
+		iod_reset = false;
 	}
 
 	void onKey(int key, int scancode, int action, int mods) override {
@@ -999,6 +1025,7 @@ protected:
 	//}
 
 	// newly defined function
+	// To freeze head rotation and/or position, manipulate mat4 headPose (see notes)
 	void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose, bool isLeft) {
 		cubeScene->render(projection, glm::inverse(headPose), isLeft);
 	}
