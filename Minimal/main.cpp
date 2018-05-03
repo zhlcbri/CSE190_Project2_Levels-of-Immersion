@@ -80,7 +80,6 @@ bool iod_down = false; // true when RThumbStick to left
 bool iod_reset = false; // true when RThumbStick pressed in
 
 // Button X controls
-bool x_pressed = false;
 bool x1 = true; // show entire scene (cubes and sky box in stereo)
 bool x2 = false; // show just the sky box in stereo
 bool x3 = false; // show just the sky box in mono
@@ -98,6 +97,8 @@ bool b1 = true; // regular head tracking (both position and orientation)
 bool b2 = false; // orientation only (position frozen to what it just was before the mode was selected)
 bool b3 = false; // position only (orientation frozen to what it just was)
 bool b4 = false; // no tracking (position and orientation frozen to what they just were when the user pressed the button)
+
+bool isPressed = false; // true if any button is pressed
 
 glm::mat4 headPos_left_curr = glm::mat4(1.0f);
 glm::mat4 headPos_right_curr = glm::mat4(1.0f);
@@ -595,7 +596,15 @@ protected:
 			cube_size_down = false;
 			cube_size_reset = false;
 
-			// x_pressed = false;
+			if (inputState.Buttons & ovrButton_Y) {
+				if (!isPressed) {
+					cout << "Button Y pressed" << endl;
+					isPressed = true;
+				}
+			}
+			else if (!inputState.Buttons) {
+				isPressed = false;
+			}
 
 			// Logic to vary interocular distance
 			if (inputState.Thumbstick[ovrHand_Right].x > 0) {
@@ -630,7 +639,7 @@ protected:
 
 			///////////////////////////////
 			// Logic to cycle between five modes with the 'A' button
-			if (inputState.Buttons == ovrButton_A) {  // how to detect button press for only one frame?
+			if (inputState.Buttons & ovrButton_A) {  // how to detect button press for only one frame?
 				//cout << "Button A pressed" << endl;
 
 				if (a1) {
@@ -662,45 +671,32 @@ protected:
 
 			///////////////////////////////
 			// Logic to cycle between five modes with the 'X' button
-			else if (inputState.Buttons == ovrButton_X) {
-
-				if (!x_pressed) {
-					//cout << "Button X pressed" << endl;
-					x_pressed = true;
+			else if (inputState.Buttons & ovrButton_X) {
+				if (x1) {
+					x1 = false;
+					x2 = true;
+					//cout << "showing just the sky box in stereo" << endl;
 				}
-
-				if (x_pressed) {
-
-					if (x1) {
-						x1 = false;
-						x2 = true;
-						//cout << "showing just the sky box in stereo" << endl;
-						x_pressed = false;
-					}
-					else if (x2) {
-						x2 = false;
-						x3 = true;
-						//cout << "showing just the sky box in mono" << endl;
-						x_pressed = false;
-					}
-					else if (x3) {
-						x3 = false;
-						x4 = true;
-						//cout << "showing my room" << endl;
-						x_pressed = false;
-					}
-					else if (x4) {
-						x4 = false;
-						x1 = true;
-						//cout << "showing the entire scene" << endl;
-						x_pressed = false;
-					}
-				}			
+				else if (x2) {
+					x2 = false;
+					x3 = true;
+					//cout << "showing just the sky box in mono" << endl;
+				}
+				else if (x3) {
+					x3 = false;
+					x4 = true;
+					//cout << "showing my room" << endl;
+				}
+				else if (x4) {
+					x4 = false;
+					x1 = true;
+					//cout << "showing the entire scene" << endl;
+				}							
 			}
 
 			///////////////////////////////
 			// Logic to cycle between four head tracking modes with the 'B' button
-			else if (inputState.Buttons == ovrButton_B) {
+			else if (inputState.Buttons & ovrButton_B) {
 				if (b1) {
 					b1 = false;
 					b2 = true;
@@ -791,15 +787,12 @@ protected:
 
 		///////////////////////////////
 		///// head positions this frame
-
 		headPos_left_curr = ovr::toGlm(eyePoses[ovrEye_Left]);
 		headPos_right_curr = ovr::toGlm(eyePoses[ovrEye_Right]);
 
 		if (b1) {
 			// regular tracking
-
-			/*headPos_left_curr = ovr::toGlm(eyePoses[ovrEye_Left]);
-			headPos_right_curr = ovr::toGlm(eyePoses[ovrEye_Right]);*/
+			// do nothing
 		}
 		else if (b2) {
 			// orientation only
