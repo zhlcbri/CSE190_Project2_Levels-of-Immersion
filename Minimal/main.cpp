@@ -596,7 +596,7 @@ protected:
 			cube_size_down = false;
 			cube_size_reset = false;
 
-			if (inputState.Buttons & ovrButton_Y) {
+			/*if (inputState.Buttons & ovrButton_Y) {
 				if (!isPressed) {
 					cout << "Button Y pressed" << endl;
 					isPressed = true;
@@ -604,7 +604,7 @@ protected:
 			}
 			else if (!inputState.Buttons) {
 				isPressed = false;
-			}
+			}*/
 
 			// Logic to vary interocular distance
 			if (inputState.Thumbstick[ovrHand_Right].x > 0) {
@@ -637,10 +637,16 @@ protected:
 				cube_size_reset = true;
 			}
 
+
+			if (!inputState.Buttons) {
+				isPressed = false;
+			}
+
 			///////////////////////////////
 			// Logic to cycle between five modes with the 'A' button
-			if (inputState.Buttons & ovrButton_A) {  // how to detect button press for only one frame?
+			if ((inputState.Buttons & ovrButton_A) && !isPressed) { 
 				//cout << "Button A pressed" << endl;
+				isPressed = true;
 
 				if (a1) {
 					a1 = false;
@@ -671,32 +677,38 @@ protected:
 
 			///////////////////////////////
 			// Logic to cycle between five modes with the 'X' button
-			else if (inputState.Buttons & ovrButton_X) {
+			else if ((inputState.Buttons & ovrButton_X) && !isPressed) {
+
+				isPressed = true;
+
 				if (x1) {
 					x1 = false;
 					x2 = true;
-					//cout << "showing just the sky box in stereo" << endl;
+					cout << "showing just the sky box in stereo" << endl;
 				}
 				else if (x2) {
 					x2 = false;
 					x3 = true;
-					//cout << "showing just the sky box in mono" << endl;
+					cout << "showing just the sky box in mono" << endl;
 				}
 				else if (x3) {
 					x3 = false;
 					x4 = true;
-					//cout << "showing my room" << endl;
+					cout << "showing my room" << endl;
 				}
 				else if (x4) {
 					x4 = false;
 					x1 = true;
-					//cout << "showing the entire scene" << endl;
+					cout << "showing the entire scene" << endl;
 				}							
 			}
 
 			///////////////////////////////
 			// Logic to cycle between four head tracking modes with the 'B' button
-			else if (inputState.Buttons & ovrButton_B) {
+			else if ((inputState.Buttons & ovrButton_B) && !isPressed) {
+
+				isPressed = true;
+
 				if (b1) {
 					b1 = false;
 					b2 = true;
@@ -790,11 +802,32 @@ protected:
 		headPos_left_curr = ovr::toGlm(eyePoses[ovrEye_Left]);
 		headPos_right_curr = ovr::toGlm(eyePoses[ovrEye_Right]);
 
-		if (b1) {
-			// regular tracking
-			// do nothing
-		}
-		else if (b2) {
+		// Code below causes double-images
+
+		/*headPos_left_curr[0].x = headPos_left_prev[0].x + (headPos_left_curr[0].x - headPos_left_prev[0].x) * 2;
+		headPos_left_curr[1].x = headPos_left_prev[1].x + (headPos_left_curr[1].x - headPos_left_prev[1].x) * 2;
+		headPos_left_curr[2].x = headPos_left_prev[2].x + (headPos_left_curr[2].x - headPos_left_prev[2].x) * 2;
+
+		headPos_right_curr[0].x = headPos_right_prev[0].x + (headPos_right_curr[0].x - headPos_right_prev[0].x) * 2;
+		headPos_right_curr[1].x = headPos_right_prev[1].x + (headPos_right_curr[1].x - headPos_right_prev[1].x) * 2;
+		headPos_right_curr[2].x = headPos_right_prev[2].x + (headPos_right_curr[2].x - headPos_right_prev[2].x) * 2;*/
+
+		/*headPos_left_curr[1].x *= 2;
+		headPos_left_curr[2].x *= 2;*/
+
+		/*headPos_right_curr[1].x *= 2;
+		headPos_right_curr[2].x *= 2;*/
+
+		// find out about orientation
+		//cout << "headPos_left_curr[0]: " << headPos_left_curr[0].x << ", " << headPos_left_curr[0].y << ", " << headPos_left_curr[0].z << endl;
+		/*cout << "headPos_left_curr[1]: " << headPos_left_curr[1].x << ", " << headPos_left_curr[1].y << ", " << headPos_left_curr[1].z << endl;*/
+		/*cout << "headPos_left_curr[2]: " << headPos_left_curr[2].x << ", " << headPos_left_curr[2].y << ", " << headPos_left_curr[2].z << endl;*/
+
+		//cout << "headPos_left_curr[3]: " << headPos_left_curr[3].x << ", " << headPos_left_curr[3].y << ", " << headPos_left_curr[3].z << endl;
+
+		// do nothing on regular tracking mode (b1)
+
+		if (b2) {
 			// orientation only
 			// position frozen to last frame
 			headPos_left_curr[3] = headPos_left_prev[3];
@@ -839,14 +872,12 @@ protected:
 				// call renderScene() twice one time for each eye
 				if (eye == ovrEye_Left) {
 					//renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);
-
 					renderScene(_eyeProjections[ovrEye_Left], headPos_left_curr, true);
 
 				}
 				else {
 					//renderScene(_eyeProjections[ovrEye_Right], ovr::toGlm(eyePoses[ovrEye_Right]), false);
-
-					renderScene(_eyeProjections[ovrEye_Right], headPos_right_curr, true);
+					renderScene(_eyeProjections[ovrEye_Right], headPos_right_curr, false);
 
 				}			
 			}
@@ -854,14 +885,12 @@ protected:
 			else if (a2) {
 				// render one eye's view to both eyes = monoscopic view
 				/*renderScene(_eyeProjections[eye], ovr::toGlm(eyePoses[ovrEye_Left]), true);*/
-
 				renderScene(_eyeProjections[eye], headPos_left_curr, true);
 			}
 			else if (a3) {
 				// render to only left eye
 				if (eye == ovrEye_Left) {
 					//renderScene(_eyeProjections[ovrEye_Left], ovr::toGlm(eyePoses[ovrEye_Left]), true);
-
 					renderScene(_eyeProjections[ovrEye_Left], headPos_left_curr, true);
 				}
 				
@@ -1025,9 +1054,11 @@ public:
 		if (x1 || x2) {
 			// render different texture images for left and right eye to create stereo effect
 			if (isLeftEye) {
+				//cout << "isLeftEye" << endl;
 				skybox_left->draw(cube_shader, projection, modelview);
 			}
 			else {
+				//cout << "isRightEye" << endl;
 				skybox_right->draw(cube_shader, projection, modelview);
 			}
 
@@ -1062,8 +1093,6 @@ public:
 			// render custom skybox
 			skybox_room->draw(cube_shader, projection, modelview);
 		}
-
-
 	}
 };
 
