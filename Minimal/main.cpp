@@ -578,6 +578,11 @@ protected:
 		ovrInputState inputState;
 		if (OVR_SUCCESS(ovr_GetInputState(_session, ovrControllerType_Touch, &inputState)))
 		{
+			// reset booleans
+			cube_size_up = false;
+			cube_size_down = false;
+			cube_size_reset = false;
+
 			/*if (inputState.HandTrigger[ovrHand_Right] > 0.5f)   cerr << "right middle trigger pressed" << endl;
 			if (inputState.IndexTrigger[ovrHand_Right] > 0.5f)	cerr << "right index trigger pressed"  << endl;
 			if (inputState.HandTrigger[ovrHand_Left] > 0.5f)    cerr << "left middle trigger pressed"  << endl;
@@ -704,10 +709,10 @@ protected:
 			}
 
 			// change iod
-			if (iod_up) {
+			if (iod_up && iod < 0.3) {
 				iod += 0.01;
 			}
-			else if (iod_down) {
+			else if (iod_down && iod > -0.1) {
 				iod -= 0.01;
 			}
 			else if (iod_reset) {
@@ -717,11 +722,7 @@ protected:
 			_viewScaleDesc.HmdToEyePose[1].Position.x = (float)(iod / 2);
 		}
 
-		// reset bools
-		cube_size_up = false;
-		cube_size_down = false;
-		cube_size_reset = false;
-
+		// reset booleans
 		iod_up = false;
 		iod_down = false;
 		iod_reset = false;
