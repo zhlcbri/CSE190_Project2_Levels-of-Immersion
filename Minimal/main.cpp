@@ -100,10 +100,24 @@ bool b4 = false; // no tracking (position and orientation frozen to what they ju
 
 bool isPressed = false; // true if any button is pressed
 
+// HMD transformation matrices
 glm::mat4 headPos_left_curr = glm::mat4(1.0f);
 glm::mat4 headPos_right_curr = glm::mat4(1.0f);
 glm::mat4 headPos_left_prev = glm::mat4(1.0f); // use this matrix to track head position each frame
 glm::mat4 headPos_right_prev = glm::mat4(1.0f);
+
+// euler angles of HMD's rotation matrix
+float theta_x_left_curr, theta_y_left_curr, theta_z_left_curr = 0.0f;
+float theta_x_left_prev, theta_y_left_prev, theta_z_left_prev = 0.0f;
+
+float theta_x_right_curr, theta_y_right_curr, theta_z_right_curr = 0.0f;
+float theta_x_right_prev, theta_y_right_prev, theta_z_right_prev = 0.0f;
+
+float theta_x_curr, theta_y_curr, theta_z_curr = 0.0f;
+float theta_x_prev, theta_y_prev, theta_z_prev = 0.0f;
+glm::mat4 headPos_curr = glm::mat4(1.0f);
+glm::mat4 headPos_prev = glm::mat4(1.0f);
+
 //////////////////////
 
 bool checkFramebufferStatus(GLenum target = GL_FRAMEBUFFER) {
@@ -596,16 +610,6 @@ protected:
 			cube_size_down = false;
 			cube_size_reset = false;
 
-			/*if (inputState.Buttons & ovrButton_Y) {
-				if (!isPressed) {
-					cout << "Button Y pressed" << endl;
-					isPressed = true;
-				}
-			}
-			else if (!inputState.Buttons) {
-				isPressed = false;
-			}*/
-
 			// Logic to vary interocular distance
 			if (inputState.Thumbstick[ovrHand_Right].x > 0) {
 				//cout << "iod up" << endl;
@@ -763,6 +767,28 @@ protected:
 		GlfwApp::onKey(key, scancode, action, mods);
 	}
 
+	mat3 computeRotation(float theta_x, float theta_y, float theta_z) {
+		mat3 X, Y, Z = mat3(1.0f);
+
+		X[1][1] = cosf(theta_x);
+		X[2][1] = -sinf(theta_x);
+		X[1][2] = sinf(theta_x);
+		X[2][2] = cosf(theta_x);
+
+		Y[0][0] = cosf(theta_y);
+		Y[0][2] = -sinf(theta_y);
+		Y[2][0] = sinf(theta_y);
+		Y[2][2] = cosf(theta_y);
+
+		Z[0][0] = cosf(theta_z);
+		Z[0][1] = sinf(theta_z);
+		Z[1][0] = -sinf(theta_z);
+		Z[1][1] = cosf(theta_z);
+
+		mat3 R = Z * Y * X;
+		return R;
+	}
+
 	void draw() final override {
 
 		// Query Touch controllers. Query their parameters:
@@ -802,29 +828,52 @@ protected:
 		headPos_left_curr = ovr::toGlm(eyePoses[ovrEye_Left]);
 		headPos_right_curr = ovr::toGlm(eyePoses[ovrEye_Right]);
 
-		// Code below causes double-images
+		//// Super-rotation
+		////// 1. compute euler angles from HMD's rotation matrix
+		//mat3 R_left = mat3(headPos_left_curr[0], headPos_left_curr[1], headPos_left_curr[2]);
+		//mat3 R_right = mat3(headPos_right_curr[0], headPos_right_curr[1], headPos_right_curr[2]);
+		//
+		//// euler angles for left eye
+		//theta_x_left_curr = atan2f(R_left[1][2], R_left[2][2]);
+		//theta_y_left_curr = atan2f(-R_left[0][2], sqrt(pow(R_left[1][2], 2) + pow(R_left[2][2], 2)));
+		//theta_z_left_curr = atan2f(R_left[0][1], R_left[0][0]);
+		//cout << "theta_left_curr: " << theta_x_left_curr << ", " << theta_y_left_curr << ", " << theta_z_left_curr << endl;
 
-		/*headPos_left_curr[0].x = headPos_left_prev[0].x + (headPos_left_curr[0].x - headPos_left_prev[0].x) * 2;
-		headPos_left_curr[1].x = headPos_left_prev[1].x + (headPos_left_curr[1].x - headPos_left_prev[1].x) * 2;
-		headPos_left_curr[2].x = headPos_left_prev[2].x + (headPos_left_curr[2].x - headPos_left_prev[2].x) * 2;
+		//// euler angles for right eye
+		//theta_x_right_curr = atan2f(R_right[1][2], R_right[2][2]);
+		//theta_y_right_curr = atan2f(-R_right[0][2], sqrt(pow(R_right[1][2], 2) + pow(R_right[2][2], 2)));
+		//theta_z_right_curr = atan2f(R_right[0][1], R_right[0][0]);
 
-		headPos_right_curr[0].x = headPos_right_prev[0].x + (headPos_right_curr[0].x - headPos_right_prev[0].x) * 2;
-		headPos_right_curr[1].x = headPos_right_prev[1].x + (headPos_right_curr[1].x - headPos_right_prev[1].x) * 2;
-		headPos_right_curr[2].x = headPos_right_prev[2].x + (headPos_right_curr[2].x - headPos_right_prev[2].x) * 2;*/
+		////// 2. get the delta value of euler angles between two frames
+		////// 3. double the delta values;
+		//// left eye 
+		//float delta_x_left = (theta_x_left_curr - theta_x_left_prev)/* * 2*/;
+		//float delta_y_left = (theta_y_left_curr - theta_y_left_prev)/* * 2*/;
+		//float delta_z_left = (theta_z_left_curr - theta_z_left_prev)/* * 2*/;
 
-		/*headPos_left_curr[1].x *= 2;
-		headPos_left_curr[2].x *= 2;*/
+		//// right eye 
+		//float delta_x_right = (theta_x_right_curr - theta_x_right_prev)/* * 2*/;
+		//float delta_y_right = (theta_y_right_curr - theta_y_right_prev)/* * 2*/;
+		//float delta_z_right = (theta_z_right_curr - theta_z_right_prev)/* * 2*/;
 
-		/*headPos_right_curr[1].x *= 2;
-		headPos_right_curr[2].x *= 2;*/
+		////// 4. use the new delta values to compose a new rotation matrix
+		//// call function plug in delta values
+		//mat3 new_R_left = computeRotation(theta_x_left_prev + delta_x_left, (theta_y_left_prev + delta_y_left) * 2.0, theta_z_left_prev + delta_z_left);
+		//mat3 new_R_right = computeRotation(theta_x_right_prev + delta_x_right, (theta_y_right_prev + delta_y_right) * 2.0, theta_z_right_prev + delta_z_right);
 
-		// find out about orientation
-		//cout << "headPos_left_curr[0]: " << headPos_left_curr[0].x << ", " << headPos_left_curr[0].y << ", " << headPos_left_curr[0].z << endl;
-		/*cout << "headPos_left_curr[1]: " << headPos_left_curr[1].x << ", " << headPos_left_curr[1].y << ", " << headPos_left_curr[1].z << endl;*/
-		/*cout << "headPos_left_curr[2]: " << headPos_left_curr[2].x << ", " << headPos_left_curr[2].y << ", " << headPos_left_curr[2].z << endl;*/
+		////// 5. assign new rotation matrix back to transformation matrix
+		//mat4 new_T_left = mat4(new_R_left);
+		//new_T_left[3] = headPos_left_curr[3];
+		//// do I need to put [0][3], [1][3], and [2][3] ?
 
-		//cout << "headPos_left_curr[3]: " << headPos_left_curr[3].x << ", " << headPos_left_curr[3].y << ", " << headPos_left_curr[3].z << endl;
+		//mat4 new_T_right = mat4(new_R_right);
+		//new_T_right[3] = headPos_right_curr[3];
 
+		//// 6. done
+		//headPos_left_curr = new_T_left;
+		//headPos_right_curr = new_T_right;
+		
+		/////////
 		// do nothing on regular tracking mode (b1)
 
 		if (b2) {
@@ -927,9 +976,18 @@ protected:
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 
 
-		/////////// head positions the previous frame
+		/////////// store head positions from the previous frame
 		headPos_left_prev = headPos_left_curr;
 		headPos_right_prev = headPos_right_curr;
+
+		////////// store euler angles from the previous frame
+		theta_x_left_prev = theta_x_left_curr;
+		theta_y_left_prev = theta_y_left_curr;
+		theta_z_left_prev = theta_z_left_curr;
+
+		theta_x_right_prev = theta_x_right_curr;
+		theta_y_right_prev = theta_y_right_curr;
+		theta_z_right_prev = theta_z_right_curr;
 	}
 
 	/*virtual void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose) = 0;*/
@@ -1127,7 +1185,44 @@ protected:
 	// To freeze head rotation and/or position, manipulate mat4 headPose (see notes)
 	void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose, bool isLeft) {
 
-		cubeScene->render(projection, glm::inverse(headPose), isLeft);
+		//cubeScene->render(projection, glm::inverse(headPose), isLeft);
+
+		// Super-rotation
+
+		headPos_curr = headPose;
+
+		//// 1. compute euler angles from HMD's rotation matrix
+		mat3 R = mat3(headPos_curr[0], headPos_curr[1], headPos_curr[2]);
+
+		// euler angles for left eye
+		theta_x_curr = atan2f(R[1][2], R[2][2]);
+		theta_y_curr = atan2f(-R[0][2], sqrt(pow(R[1][2], 2) + pow(R[2][2], 2)));
+		theta_z_curr = atan2f(R[0][1], R[0][0]);
+		//cout << "theta_left_curr: " << theta_x_left_curr << ", " << theta_y_left_curr << ", " << theta_z_left_curr << endl;
+
+
+		//// 2. get the delta value of euler angles between two frames
+		//// 3. double the delta values;
+		// left eye 
+		float delta_x = (theta_x_curr - theta_x_prev)/* * 2*/;
+		float delta_y = (theta_y_curr - theta_y_prev)/* * 2*/;
+		float delta_z = (theta_z_curr - theta_z_prev)/* * 2*/;
+
+		//// 4. use the new delta values to compose a new rotation matrix
+		// call function plug in delta values
+		mat3 new_R = computeRotation(theta_x_prev + delta_x, (theta_y_prev + delta_y) * 2.0, theta_z_prev + delta_z);
+
+		//// 5. assign new rotation matrix back to transformation matrix
+		mat4 new_T = mat4(new_R);
+		new_T[3] = headPos_curr[3];
+		// do I need to put [0][3], [1][3], and [2][3] ?
+
+		// 6. done
+		headPos_curr = new_T;
+		
+		cubeScene->render(projection, glm::inverse(headPos_curr), isLeft);
+
+		headPos_prev = headPos_curr;
 	}
 };
  
