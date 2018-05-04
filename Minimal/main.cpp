@@ -25,6 +25,7 @@ limitations under the License.
 #include <exception>
 #include <algorithm>
 #include <Windows.h>
+#include <math.h>
 
 //#include <limits>
 
@@ -98,6 +99,9 @@ bool b2 = false; // orientation only (position frozen to what it just was before
 bool b3 = false; // position only (orientation frozen to what it just was)
 bool b4 = false; // no tracking (position and orientation frozen to what they just were when the user pressed the button)
 
+// Button Y controls
+bool superRotation = false; // toggled by Y button
+
 bool isPressed = false; // true if any button is pressed
 
 // HMD transformation matrices
@@ -107,16 +111,13 @@ glm::mat4 headPos_left_prev = glm::mat4(1.0f); // use this matrix to track head 
 glm::mat4 headPos_right_prev = glm::mat4(1.0f);
 
 // euler angles of HMD's rotation matrix
-float theta_x_left_curr, theta_y_left_curr, theta_z_left_curr = 0.0f;
-float theta_x_left_prev, theta_y_left_prev, theta_z_left_prev = 0.0f;
-
-float theta_x_right_curr, theta_y_right_curr, theta_z_right_curr = 0.0f;
-float theta_x_right_prev, theta_y_right_prev, theta_z_right_prev = 0.0f;
 
 float theta_x_curr, theta_y_curr, theta_z_curr = 0.0f;
 float theta_x_prev, theta_y_prev, theta_z_prev = 0.0f;
 glm::mat4 headPos_curr = glm::mat4(1.0f);
 glm::mat4 headPos_prev = glm::mat4(1.0f);
+
+float pi = atanf(1) * 4;
 
 //////////////////////
 
@@ -735,6 +736,11 @@ protected:
 				}
 
 			}
+			else if ((inputState.Buttons & ovrButton_Y) && !isPressed) {
+				isPressed = true;
+				if (superRotation) superRotation = false;
+				else superRotation = true;
+			}
 
 			/////////////
 			// change iod
@@ -765,28 +771,6 @@ protected:
 		}
 
 		GlfwApp::onKey(key, scancode, action, mods);
-	}
-
-	mat3 computeRotation(float theta_x, float theta_y, float theta_z) {
-		mat3 X, Y, Z = mat3(1.0f);
-
-		X[1][1] = cosf(theta_x);
-		X[2][1] = -sinf(theta_x);
-		X[1][2] = sinf(theta_x);
-		X[2][2] = cosf(theta_x);
-
-		Y[0][0] = cosf(theta_y);
-		Y[0][2] = -sinf(theta_y);
-		Y[2][0] = sinf(theta_y);
-		Y[2][2] = cosf(theta_y);
-
-		Z[0][0] = cosf(theta_z);
-		Z[0][1] = sinf(theta_z);
-		Z[1][0] = -sinf(theta_z);
-		Z[1][1] = cosf(theta_z);
-
-		mat3 R = Z * Y * X;
-		return R;
 	}
 
 	void draw() final override {
@@ -827,51 +811,6 @@ protected:
 		///// head positions this frame
 		headPos_left_curr = ovr::toGlm(eyePoses[ovrEye_Left]);
 		headPos_right_curr = ovr::toGlm(eyePoses[ovrEye_Right]);
-
-		//// Super-rotation
-		////// 1. compute euler angles from HMD's rotation matrix
-		//mat3 R_left = mat3(headPos_left_curr[0], headPos_left_curr[1], headPos_left_curr[2]);
-		//mat3 R_right = mat3(headPos_right_curr[0], headPos_right_curr[1], headPos_right_curr[2]);
-		//
-		//// euler angles for left eye
-		//theta_x_left_curr = atan2f(R_left[1][2], R_left[2][2]);
-		//theta_y_left_curr = atan2f(-R_left[0][2], sqrt(pow(R_left[1][2], 2) + pow(R_left[2][2], 2)));
-		//theta_z_left_curr = atan2f(R_left[0][1], R_left[0][0]);
-		//cout << "theta_left_curr: " << theta_x_left_curr << ", " << theta_y_left_curr << ", " << theta_z_left_curr << endl;
-
-		//// euler angles for right eye
-		//theta_x_right_curr = atan2f(R_right[1][2], R_right[2][2]);
-		//theta_y_right_curr = atan2f(-R_right[0][2], sqrt(pow(R_right[1][2], 2) + pow(R_right[2][2], 2)));
-		//theta_z_right_curr = atan2f(R_right[0][1], R_right[0][0]);
-
-		////// 2. get the delta value of euler angles between two frames
-		////// 3. double the delta values;
-		//// left eye 
-		//float delta_x_left = (theta_x_left_curr - theta_x_left_prev)/* * 2*/;
-		//float delta_y_left = (theta_y_left_curr - theta_y_left_prev)/* * 2*/;
-		//float delta_z_left = (theta_z_left_curr - theta_z_left_prev)/* * 2*/;
-
-		//// right eye 
-		//float delta_x_right = (theta_x_right_curr - theta_x_right_prev)/* * 2*/;
-		//float delta_y_right = (theta_y_right_curr - theta_y_right_prev)/* * 2*/;
-		//float delta_z_right = (theta_z_right_curr - theta_z_right_prev)/* * 2*/;
-
-		////// 4. use the new delta values to compose a new rotation matrix
-		//// call function plug in delta values
-		//mat3 new_R_left = computeRotation(theta_x_left_prev + delta_x_left, (theta_y_left_prev + delta_y_left) * 2.0, theta_z_left_prev + delta_z_left);
-		//mat3 new_R_right = computeRotation(theta_x_right_prev + delta_x_right, (theta_y_right_prev + delta_y_right) * 2.0, theta_z_right_prev + delta_z_right);
-
-		////// 5. assign new rotation matrix back to transformation matrix
-		//mat4 new_T_left = mat4(new_R_left);
-		//new_T_left[3] = headPos_left_curr[3];
-		//// do I need to put [0][3], [1][3], and [2][3] ?
-
-		//mat4 new_T_right = mat4(new_R_right);
-		//new_T_right[3] = headPos_right_curr[3];
-
-		//// 6. done
-		//headPos_left_curr = new_T_left;
-		//headPos_right_curr = new_T_right;
 		
 		/////////
 		// do nothing on regular tracking mode (b1)
@@ -979,15 +918,6 @@ protected:
 		/////////// store head positions from the previous frame
 		headPos_left_prev = headPos_left_curr;
 		headPos_right_prev = headPos_right_curr;
-
-		////////// store euler angles from the previous frame
-		theta_x_left_prev = theta_x_left_curr;
-		theta_y_left_prev = theta_y_left_curr;
-		theta_z_left_prev = theta_z_left_curr;
-
-		theta_x_right_prev = theta_x_right_curr;
-		theta_y_right_prev = theta_y_right_curr;
-		theta_z_right_prev = theta_z_right_curr;
 	}
 
 	/*virtual void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose) = 0;*/
@@ -1181,46 +1111,109 @@ protected:
 	//	//cubeScene->render(projection, glm::inverse(headPose));
 	//}
 
+	mat3 computeRotation(float theta_x, float theta_y, float theta_z) {
+		mat3 X, Y, Z = mat3(1.0f);
+
+		X[1][1] = cosf(theta_x);
+		X[2][1] = -sinf(theta_x);
+		X[1][2] = sinf(theta_x);
+		X[2][2] = cosf(theta_x);
+
+		Y[0][0] = cosf(theta_y);
+		Y[0][2] = -sinf(theta_y);
+		Y[2][0] = sinf(theta_y);
+		Y[2][2] = cosf(theta_y);
+
+		Z[0][0] = cosf(theta_z);
+		Z[0][1] = sinf(theta_z);
+		Z[1][0] = -sinf(theta_z);
+		Z[1][1] = cosf(theta_z);
+
+		mat3 R = Z * Y * X;
+		/*mat3 R = Z * X * Y;*/
+
+		/*mat3 R = Y * X * Z;*/
+		/*mat3 R = Y * Z * X;*/
+
+		/*mat3 R = X * Z * Y;*/
+		//mat3 R = X * Y * Z;
+
+		return R;
+	}
+
 	// newly defined function
 	// To freeze head rotation and/or position, manipulate mat4 headPose (see notes)
 	void renderScene(const glm::mat4 & projection, const glm::mat4 & headPose, bool isLeft) {
-
-		//cubeScene->render(projection, glm::inverse(headPose), isLeft);
-
-		// Super-rotation
-
 		headPos_curr = headPose;
 
-		//// 1. compute euler angles from HMD's rotation matrix
-		mat3 R = mat3(headPos_curr[0], headPos_curr[1], headPos_curr[2]);
+		if (!superRotation) {
+			cubeScene->render(projection, glm::inverse(headPose), isLeft);
+			if (!isPressed) {
+				cout << "old head pose" << endl;				
+				cout << "inverse(headPose)[0]: " << glm::inverse(headPose)[0].x << ", " << glm::inverse(headPose)[0].y << ", " << glm::inverse(headPose)[0].z << endl;
+				cout << "inverse(headPose)[1]: " << glm::inverse(headPose)[1].x << ", " << glm::inverse(headPose)[1].y << ", " << glm::inverse(headPose)[1].z << endl;
+				cout << "inverse(headPose)[2]: " << glm::inverse(headPose)[2].x << ", " << glm::inverse(headPose)[2].y << ", " << glm::inverse(headPose)[2].z << endl;
+			}
+		}
+		else {
+			// Super-rotation
 
-		// euler angles for left eye
-		theta_x_curr = atan2f(R[1][2], R[2][2]);
-		theta_y_curr = atan2f(-R[0][2], sqrt(pow(R[1][2], 2) + pow(R[2][2], 2)));
-		theta_z_curr = atan2f(R[0][1], R[0][0]);
-		//cout << "theta_left_curr: " << theta_x_left_curr << ", " << theta_y_left_curr << ", " << theta_z_left_curr << endl;
+			//// 1. compute euler angles from HMD's rotation matrix
+			mat3 R = mat3(headPos_curr[0], headPos_curr[1], headPos_curr[2]);
+
+			// euler angles for left eye
+			/*theta_x_curr = atan2f(R[1][2], R[2][2]);
+			theta_y_curr = atan2f(-R[0][2], sqrt(pow(R[1][2], 2) + pow(R[2][2], 2)));
+			theta_z_curr = atan2f(R[0][1], R[0][0]);*/
+			//////////////////////////////////////////
+
+			theta_y_curr = atan2f(R[1][1], R[2][1]);
+			theta_z_curr = atan2f(-R[0][1], sqrt(pow(R[1][1], 2) + pow(R[2][1], 2)));
+			theta_x_curr = atan2f(R[0][0], R[0][2]);
+
+			/*theta_y_curr = atan2f(R[1][0], R[2][0]);
+			theta_z_curr = atan2f(-R[0][0], sqrt(pow(R[1][0], 2) + pow(R[2][0], 2)));
+			theta_x_curr = atan2f(R[0][2], R[0][1]);*/
+
+			/*theta_y_curr = atan2f(R[1][2], R[2][2]);
+			theta_z_curr = atan2f(-R[0][2], sqrt(pow(R[1][2], 2) + pow(R[2][2], 2)));
+			theta_x_curr = atan2f(R[0][1], R[0][0]);*/
 
 
-		//// 2. get the delta value of euler angles between two frames
-		//// 3. double the delta values;
-		// left eye 
-		float delta_x = (theta_x_curr - theta_x_prev)/* * 2*/;
-		float delta_y = (theta_y_curr - theta_y_prev)/* * 2*/;
-		float delta_z = (theta_z_curr - theta_z_prev)/* * 2*/;
+			//cout << "theta_curr: " << theta_x_curr << ", " << theta_y_curr/* *2*/ << ", " << theta_z_curr << endl;
 
-		//// 4. use the new delta values to compose a new rotation matrix
-		// call function plug in delta values
-		mat3 new_R = computeRotation(theta_x_prev + delta_x, (theta_y_prev + delta_y) * 2.0, theta_z_prev + delta_z);
+			//// 2. get the delta value of euler angles between two frames
+			//// 3. double the delta values;
+			//float delta_x = (theta_x_curr - theta_x_prev)/* * 2*/;
+			//float delta_y = (theta_y_curr - theta_y_prev)/* * 2*/;
+			//float delta_z = (theta_z_curr - theta_z_prev)/* * 2*/;
 
-		//// 5. assign new rotation matrix back to transformation matrix
-		mat4 new_T = mat4(new_R);
-		new_T[3] = headPos_curr[3];
-		// do I need to put [0][3], [1][3], and [2][3] ?
+			//// 4. use the new delta values to compose a new rotation matrix
+			// call function plug in delta values
+			/*float x = theta_x_curr;
+			float y = theta_y_curr * 2.0;
+			float z = theta_z_curr;*/
 
-		// 6. done
-		headPos_curr = new_T;
-		
-		cubeScene->render(projection, glm::inverse(headPos_curr), isLeft);
+			//mat3 new_R = computeRotation(theta_x_curr, y, theta_z_curr);
+
+			mat3 new_R = computeRotation(theta_z_curr, theta_x_curr * 2.0, theta_y_curr);
+
+			//// 5. assign new rotation matrix back to transformation matrix
+			mat4 new_T = mat4(new_R);
+			new_T[3] = headPos_curr[3];
+			// do I need to put [0][3], [1][3], and [2][3] ?
+
+			// 6. done
+			headPos_curr = new_T;
+			cubeScene->render(projection, glm::inverse(headPos_curr), isLeft);
+
+			if (isPressed) {
+				cout << "new head pose" << endl;
+				cout << "inverse(headPose)[0]: " << glm::inverse(headPose)[0].x << ", " << glm::inverse(headPose)[0].y << ", " << glm::inverse(headPose)[0].z << endl;
+				cout << "inverse(headPose)[1]: " << glm::inverse(headPose)[1].x << ", " << glm::inverse(headPose)[1].y << ", " << glm::inverse(headPose)[1].z << endl;
+				cout << "inverse(headPose)[2]: " << glm::inverse(headPose)[2].x << ", " << glm::inverse(headPose)[2].y << ", " << glm::inverse(headPose)[2].z << endl;
+			}
+		}
 
 		headPos_prev = headPos_curr;
 	}
